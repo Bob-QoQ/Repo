@@ -166,19 +166,6 @@ class LotteryAnalysis:
                       SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
                       SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
                       SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
-                      SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL 
                       SELECT 1)
             ) nums 
             WHERE number <= {max_number}
@@ -1045,7 +1032,7 @@ class LotteryAnalysis:
         df = pd.read_sql_query(query, conn)
         conn.close()
         
-        return df.to_dict('records')[0]
+        return df.to_dict('records')[0] 
     
     def recommend_numbers(self, lottery_type='big_lotto', periods=None):
         """推薦號碼
@@ -1189,3 +1176,1263 @@ class LotteryAnalysis:
             'cold_numbers': cold_recommendations,
             'analysis_summary': summary
         } 
+    
+    def combination_pattern_analysis(self, lottery_type='big_lotto', periods=None):
+        """分析中獎號碼的組合模式"""
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 連續號碼組合分析
+        query_consecutive = f"""
+        WITH DrawNumbers AS (
+            SELECT 
+                draw_term,
+                GROUP_CONCAT(value) OVER (PARTITION BY draw_term ORDER BY value) as numbers
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        ConsecutivePatterns AS (
+            SELECT DISTINCT
+                draw_term,
+                numbers,
+                CASE 
+                    WHEN numbers LIKE '%,_,_+1,_+2%' THEN '3連號'
+                    WHEN numbers LIKE '%,_,_+1%' THEN '2連號'
+                    ELSE '無連號'
+                END as pattern_type
+            FROM DrawNumbers
+        )
+        SELECT 
+            pattern_type,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (SELECT COUNT(DISTINCT draw_term) FROM ConsecutivePatterns), 2) as percentage
+        FROM ConsecutivePatterns
+        GROUP BY pattern_type
+        ORDER BY frequency DESC
+        """
+        
+        # 2. 同尾數組合分析
+        query_same_tail = f"""
+        WITH DrawNumbers AS (
+            SELECT 
+                draw_term,
+                GROUP_CONCAT(value % 10) as tails
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY draw_term
+        ),
+        TailCounts AS (
+            SELECT 
+                draw_term,
+                tails,
+                (
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '0', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '1', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '2', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '3', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '4', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '5', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '6', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '7', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '8', '')) +
+                    LENGTH(tails) - 
+                    LENGTH(REPLACE(tails, '9', ''))
+                ) / 2 as same_tail_count
+            FROM DrawNumbers
+        )
+        SELECT 
+            CAST(same_tail_count as INTEGER) || '個同尾' as pattern_type,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM DrawNumbers), 2) as percentage
+        FROM TailCounts
+        GROUP BY same_tail_count
+        ORDER BY same_tail_count DESC
+        """
+        
+        # 3. 等差數列組合分析
+        query_arithmetic = f"""
+        WITH RECURSIVE 
+        Numbers AS (
+            SELECT 
+                draw_term,
+                value as number,
+                ROW_NUMBER() OVER (PARTITION BY draw_term ORDER BY value) as position
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        ArithmeticSequences AS (
+            SELECT 
+                n1.draw_term,
+                n1.number as num1,
+                n2.number as num2,
+                n3.number as num3,
+                n2.number - n1.number as diff
+            FROM Numbers n1
+            JOIN Numbers n2 ON n1.draw_term = n2.draw_term AND n2.position = n1.position + 1
+            JOIN Numbers n3 ON n2.draw_term = n3.draw_term AND n3.position = n2.position + 1
+            WHERE n3.number - n2.number = n2.number - n1.number
+        )
+        SELECT 
+            diff || '差距' as pattern_type,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (
+                SELECT COUNT(DISTINCT draw_term) FROM {lottery_type} WHERE 1=1 {period_filter}
+            ), 2) as percentage,
+            GROUP_CONCAT(DISTINCT num1 || ',' || num2 || ',' || num3) as examples
+        FROM ArithmeticSequences
+        GROUP BY diff
+        HAVING frequency >= 2
+        ORDER BY frequency DESC
+        """
+        
+        # 4. 鄰近號碼組合分析
+        query_adjacent = f"""
+        WITH DrawNumbers AS (
+            SELECT 
+                draw_term,
+                value as number,
+                LAG(value) OVER (PARTITION BY draw_term ORDER BY value) as prev_number
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        AdjacentPairs AS (
+            SELECT 
+                draw_term,
+                COUNT(*) as adjacent_pairs
+            FROM DrawNumbers
+            WHERE number - prev_number <= 3 
+            AND number - prev_number > 1  -- 排除連續號碼
+            GROUP BY draw_term
+        )
+        SELECT 
+            adjacent_pairs || '組鄰近號碼' as pattern_type,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (
+                SELECT COUNT(DISTINCT draw_term) FROM {lottery_type} WHERE 1=1 {period_filter}
+            ), 2) as percentage
+        FROM AdjacentPairs
+        GROUP BY adjacent_pairs
+        ORDER BY adjacent_pairs DESC
+        """
+        
+        # 執行查詢
+        consecutive_patterns = pd.read_sql_query(query_consecutive, conn)
+        same_tail_patterns = pd.read_sql_query(query_same_tail, conn)
+        arithmetic_patterns = pd.read_sql_query(query_arithmetic, conn)
+        adjacent_patterns = pd.read_sql_query(query_adjacent, conn)
+        
+        conn.close()
+        
+        return {
+            'consecutive_patterns': consecutive_patterns.to_dict('records'),
+            'same_tail_patterns': same_tail_patterns.to_dict('records'),
+            'arithmetic_patterns': arithmetic_patterns.to_dict('records'),
+            'adjacent_patterns': adjacent_patterns.to_dict('records')
+        } 
+    
+    def combination_prediction(self, lottery_type='big_lotto', periods=None):
+        """號碼組合預測分析
+        
+        Args:
+            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
+            periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下分析結果：
+            - high_prob_combinations: 高機率組合
+            - balanced_combinations: 平衡性組合
+            - pattern_combinations: 模式型組合
+            - analysis_criteria: 分析標準說明
+        """
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 高機率組合分析
+        query_high_prob = f"""
+        WITH NumberStats AS (
+            SELECT 
+                n1.value as num1,
+                n2.value as num2,
+                COUNT(*) as frequency,
+                ROUND(COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ), 2) as percentage
+            FROM {lottery_type} t1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n2
+            WHERE 1=1 {period_filter}
+            AND n1.value < n2.value
+            GROUP BY n1.value, n2.value
+            HAVING frequency >= 3
+            ORDER BY frequency DESC
+            LIMIT 10
+        )
+        SELECT 
+            num1 || ',' || num2 as number_pair,
+            frequency,
+            percentage
+        FROM NumberStats
+        """
+        
+        # 2. 平衡性組合分析
+        query_balanced = f"""
+        WITH DrawStats AS (
+            SELECT 
+                draw_term,
+                COUNT(CASE WHEN value <= {25 if lottery_type != 'daily_cash' else 20} THEN 1 END) as small_count,
+                COUNT(CASE WHEN value % 2 = 1 THEN 1 END) as odd_count,
+                GROUP_CONCAT(value) as numbers
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY draw_term
+            HAVING 
+                small_count BETWEEN 2 AND 4
+                AND odd_count BETWEEN 2 AND 4
+        )
+        SELECT 
+            numbers as combination,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (
+                SELECT COUNT(*) FROM {lottery_type} WHERE 1=1 {period_filter}
+            ), 2) as percentage
+        FROM DrawStats
+        GROUP BY numbers
+        ORDER BY frequency DESC
+        LIMIT 10
+        """
+        
+        # 3. 模式型組合分析
+        query_pattern = f"""
+        WITH RECURSIVE 
+        DrawPatterns AS (
+            SELECT 
+                draw_term,
+                GROUP_CONCAT(
+                    CASE 
+                        WHEN value <= {25 if lottery_type != 'daily_cash' else 20} THEN 'S'
+                        ELSE 'L'
+                    END || 
+                    CASE 
+                        WHEN value % 2 = 1 THEN 'O'
+                        ELSE 'E'
+                    END
+                ) as pattern,
+                GROUP_CONCAT(value) as numbers
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY draw_term
+        )
+        SELECT 
+            pattern,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (
+                SELECT COUNT(*) FROM DrawPatterns
+            ), 2) as percentage,
+            GROUP_CONCAT(numbers) as example_combinations
+        FROM DrawPatterns
+        GROUP BY pattern
+        HAVING frequency >= 3
+        ORDER BY frequency DESC
+        LIMIT 10
+        """
+        
+        # 執行查詢
+        high_prob_combinations = pd.read_sql_query(query_high_prob, conn)
+        balanced_combinations = pd.read_sql_query(query_balanced, conn)
+        pattern_combinations = pd.read_sql_query(query_pattern, conn)
+        
+        # 分析標準說明
+        analysis_criteria = {
+            'high_prob': [
+                '分析號碼對的共同出現頻率',
+                '考慮號碼對的最近出現時間',
+                '計算號碼對的穩定性'
+            ],
+            'balanced': [
+                '大小號碼比例平衡',
+                '奇偶數比例平衡',
+                '區間分布均勻'
+            ],
+            'pattern': [
+                '分析歷史開獎的號碼模式',
+                '考慮模式的重複性',
+                '評估模式的穩定性'
+            ]
+        }
+        
+        conn.close()
+        
+        return {
+            'high_prob_combinations': high_prob_combinations.to_dict('records'),
+            'balanced_combinations': balanced_combinations.to_dict('records'),
+            'pattern_combinations': pattern_combinations.to_dict('records'),
+            'analysis_criteria': analysis_criteria
+        } 
+    
+    def advanced_statistics(self, lottery_type='big_lotto', periods=None):
+        """進階統計分析
+        
+        Args:
+            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
+            periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下分析結果：
+            - autocorrelation: 號碼自相關性分析
+            - cross_correlation: 號碼交叉關聯分析
+            - markov_chain: 馬可夫鏈分析
+            - bayes_probability: 貝氏機率分析
+        """
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 號碼自相關性分析
+        query_autocorr = f"""
+        WITH NumberSequence AS (
+            SELECT 
+                draw_term,
+                value as number,
+                LAG(draw_term, 1) OVER (PARTITION BY value ORDER BY draw_term) as prev_draw_term,
+                ROW_NUMBER() OVER (PARTITION BY value ORDER BY draw_term) as appearance_count
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        DateConversion AS (
+            SELECT 
+                number,
+                CAST(
+                    (
+                        (CAST(substr(draw_term, 1, 3) AS INTEGER) * 365) + 
+                        (CAST(substr(draw_term, 4, 2) AS INTEGER) * 30) + 
+                        CAST(substr(draw_term, 6, 2) AS INTEGER)
+                    ) - 
+                    (
+                        (CAST(substr(prev_draw_term, 1, 3) AS INTEGER) * 365) + 
+                        (CAST(substr(prev_draw_term, 4, 2) AS INTEGER) * 30) + 
+                        CAST(substr(prev_draw_term, 6, 2) AS INTEGER)
+                    ) AS INTEGER
+                ) as interval_days
+            FROM NumberSequence
+            WHERE prev_draw_term IS NOT NULL
+        ),
+        IntervalStats AS (
+            SELECT 
+                number,
+                COUNT(*) as repeat_count,
+                AVG(interval_days) as avg_interval,
+                SQRT(
+                    AVG(CAST(interval_days AS FLOAT) * CAST(interval_days AS FLOAT)) - 
+                    POWER(AVG(CAST(interval_days AS FLOAT)), 2)
+                ) as std_dev
+            FROM DateConversion
+            GROUP BY number
+            HAVING COUNT(*) >= 3
+        )
+        SELECT 
+            number,
+            ROUND(avg_interval, 1) as avg_interval,
+            repeat_count,
+            ROUND(std_dev, 1) as std_dev
+        FROM IntervalStats
+        ORDER BY avg_interval ASC
+        LIMIT 10
+        """
+        
+        # 2. 號碼交叉關聯分析
+        query_cross = f"""
+        WITH PairCounts AS (
+            SELECT 
+                n1.value as num1,
+                n2.value as num2,
+                COUNT(*) as frequency,
+                ROUND(COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ), 2) as percentage
+            FROM {lottery_type} t1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n2
+            WHERE 1=1 {period_filter}
+            AND n1.value < n2.value
+            GROUP BY n1.value, n2.value
+        )
+        SELECT 
+            num1 || '-' || num2 as number_pair,
+            frequency,
+            percentage,
+            ROUND(frequency * percentage / 100.0, 2) as correlation_score
+        FROM PairCounts
+        WHERE frequency >= 3
+        ORDER BY correlation_score DESC
+        LIMIT 10
+        """
+        
+        # 3. 馬可夫鏈分析
+        query_markov = f"""
+        WITH ConsecutiveDraws AS (
+            SELECT 
+                draw_term,
+                GROUP_CONCAT(value) as current_numbers,
+                LEAD(GROUP_CONCAT(value)) OVER (ORDER BY draw_term) as next_numbers
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY draw_term
+        ),
+        Transitions AS (
+            SELECT 
+                current_numbers,
+                next_numbers,
+                COUNT(*) as frequency
+            FROM ConsecutiveDraws
+            WHERE next_numbers IS NOT NULL
+            GROUP BY current_numbers, next_numbers
+        )
+        SELECT 
+            current_numbers,
+            next_numbers,
+            frequency,
+            ROUND(frequency * 100.0 / (
+                SELECT COUNT(*) FROM ConsecutiveDraws WHERE next_numbers IS NOT NULL
+            ), 2) as transition_prob
+        FROM Transitions
+        ORDER BY frequency DESC
+        LIMIT 10
+        """
+        
+        # 4. 貝氏機率分析
+        query_bayes = f"""
+        WITH PriorProbs AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                COUNT(*) * 1.0 / (
+                    SELECT COUNT(*) 
+                    FROM {lottery_type},
+                    json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                    WHERE 1=1 {period_filter}
+                ) as prior_prob
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        ),
+        ConditionalProbs AS (
+            SELECT 
+                p1.number,
+                p1.prior_prob,
+                COUNT(DISTINCT CASE WHEN 
+                    p1.number IN (
+                        SELECT value 
+                        FROM json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                        WHERE value = p1.number
+                    )
+                    THEN t2.draw_term 
+                END) * 1.0 / 
+                COUNT(DISTINCT t2.draw_term) as conditional_prob
+            FROM PriorProbs p1
+            CROSS JOIN {lottery_type} t2
+            WHERE t2.draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                WHERE 1=1 {period_filter}
+                ORDER BY draw_term DESC 
+                LIMIT 10
+            )
+            GROUP BY p1.number, p1.prior_prob
+        )
+        SELECT 
+            number,
+            ROUND(prior_prob * 100, 2) as prior_probability,
+            ROUND(conditional_prob * 100, 2) as conditional_probability,
+            ROUND(prior_prob * conditional_prob * 100, 2) as posterior_probability
+        FROM ConditionalProbs
+        ORDER BY posterior_probability DESC
+        LIMIT 10
+        """
+        
+        # 執行查詢
+        autocorrelation = pd.read_sql_query(query_autocorr, conn)
+        cross_correlation = pd.read_sql_query(query_cross, conn)
+        markov_chain = pd.read_sql_query(query_markov, conn)
+        bayes_probability = pd.read_sql_query(query_bayes, conn)
+        
+        # 分析說明
+        analysis_description = {
+            '號碼自相關性': '''分析每個號碼的出現間隔模式，包括：
+            - 平均間隔：計算號碼兩次出現之間的平均天數
+            - 重複次數：統計號碼在分析期間內出現的總次數
+            - 標準差：衡量號碼出現間隔的穩定性，數值越小表示越規律
+            這種分析可以幫助我們了解每個號碼的出現週期和規律性''',
+            
+            '號碼交叉關聯': '''分析不同號碼之間的關聯性，包括：
+            - 共同出現頻率：計算兩個號碼一起出現的次數
+            - 出現率：兩個號碼共同出現的機率
+            - 相關分數：綜合考慮頻率和出現率的關聯強度指標
+            這種分析可以找出經常一起出現的號碼組合''',
+            
+            '馬可夫鏈分析': '''馬可夫鏈是一種機率模型，用於分析事件的轉移規律，在樂透分析中：
+            
+            1. 基本概念：
+               - 假設下一期號碼組合的出現，與當前期的號碼組合有關
+               - 通過分析歷史數據，計算不同號碼組合之間的轉移機率
+            
+            2. 分析內容：
+               - 當前組合：本期開出的號碼組合（例如：1,15,26,33,42,48）
+               - 下期組合：下一期實際開出的號碼組合
+               - 出現次數：這種轉移模式出現的次數
+               - 轉移機率：特定轉移模式發生的機率
+            
+            3. 實際應用：
+               - 找出高機率的號碼轉移模式
+               - 預測下一期可能出現的號碼組合
+               - 發現號碼組合的演變規律
+            
+            4. 使用建議：
+               - 關注高轉移機率的組合
+               - 結合其他分析方法使用
+               - 注意樣本數量的影響
+            
+            這種分析方法特別適合尋找號碼組合的演變規律，但需要注意樂透開獎具有隨機性，
+            預測僅供參考。''',
+            
+            '貝氏機率分析': '''使用貝氏定理進行機率分析，包括：
+            - 先驗機率：根據歷史數據計算的基本出現機率
+            - 條件機率：考慮最近開獎結果後的出現機率
+            - 後驗機率：綜合歷史數據和近期表現的最終機率
+            這種分析可以更準確地預測號碼出現的可能性'''
+        }
+        
+        conn.close()
+        
+        return {
+            'autocorrelation': autocorrelation.to_dict('records'),
+            'cross_correlation': cross_correlation.to_dict('records'),
+            'markov_chain': markov_chain.to_dict('records'),
+            'bayes_probability': bayes_probability.to_dict('records'),
+            'analysis_description': {
+                'autocorrelation': '號碼自相關性',
+                'cross_correlation': '號碼交叉關聯',
+                'markov_chain': '馬可夫鏈分析',
+                'bayes_probability': '貝氏機率分析',
+                'descriptions': analysis_description
+            }
+        } 
+    
+    def missing_value_analysis(self, lottery_type='big_lotto', periods=None):
+        """遺漏值分析
+        
+        Args:
+            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
+            periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下分析結果：
+            - current_missing: 當前遺漏值分析
+            - historical_missing: 歷史遺漏值分析
+            - missing_patterns: 遺漏值模式分析
+            - missing_statistics: 遺漏值統計
+        """
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 當前遺漏值分析
+        query_current = f"""
+        WITH RECURSIVE 
+        Numbers(num) AS (
+            SELECT 1
+            UNION ALL
+            SELECT num + 1 
+            FROM Numbers 
+            WHERE num < {49 if lottery_type != 'daily_cash' else 39}
+        ),
+        LastAppearance AS (
+            SELECT 
+                value as num,
+                MAX(draw_term) as last_appearance,
+                COUNT(*) as total_appearances
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            n.num as number,
+            COALESCE(l.last_appearance, '從未出現') as last_appearance,
+            COALESCE(l.total_appearances, 0) as total_appearances,
+            (
+                SELECT COUNT(DISTINCT draw_term)
+                FROM {lottery_type}
+                WHERE draw_term > COALESCE(l.last_appearance, '000000000')
+                {period_filter}
+            ) as missing_draws
+        FROM Numbers n
+        LEFT JOIN LastAppearance l ON n.num = l.num
+        ORDER BY missing_draws DESC, n.num ASC
+        """
+        
+        # 2. 歷史遺漏值分析
+        query_historical = f"""
+        WITH RECURSIVE 
+        DrawSequence AS (
+            SELECT 
+                draw_term,
+                value as number
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        MissingPeriods AS (
+            SELECT 
+                number,
+                draw_term,
+                LAG(draw_term) OVER (PARTITION BY number ORDER BY draw_term) as prev_appearance,
+                ROW_NUMBER() OVER (PARTITION BY number ORDER BY draw_term DESC) as rn
+            FROM DrawSequence
+        )
+        SELECT 
+            number,
+            MAX(CAST(
+                (
+                    (CAST(substr(draw_term, 1, 3) AS INTEGER) * 365) + 
+                    (CAST(substr(draw_term, 4, 2) AS INTEGER) * 30) + 
+                    CAST(substr(draw_term, 6, 2) AS INTEGER)
+                ) - 
+                (
+                    (CAST(substr(prev_appearance, 1, 3) AS INTEGER) * 365) + 
+                    (CAST(substr(prev_appearance, 4, 2) AS INTEGER) * 30) + 
+                    CAST(substr(prev_appearance, 6, 2) AS INTEGER)
+                ) AS INTEGER
+            )) as max_missing_periods,
+            AVG(CAST(
+                (
+                    (CAST(substr(draw_term, 1, 3) AS INTEGER) * 365) + 
+                    (CAST(substr(draw_term, 4, 2) AS INTEGER) * 30) + 
+                    CAST(substr(draw_term, 6, 2) AS INTEGER)
+                ) - 
+                (
+                    (CAST(substr(prev_appearance, 1, 3) AS INTEGER) * 365) + 
+                    (CAST(substr(prev_appearance, 4, 2) AS INTEGER) * 30) + 
+                    CAST(substr(prev_appearance, 6, 2) AS INTEGER)
+                ) AS INTEGER
+            )) as avg_missing_periods
+        FROM MissingPeriods
+        WHERE prev_appearance IS NOT NULL
+        GROUP BY number
+        ORDER BY max_missing_periods DESC
+        LIMIT 10
+        """
+        
+        # 3. 遺漏值模式分析
+        query_patterns = f"""
+        WITH RECURSIVE 
+        NumberPatterns AS (
+            SELECT 
+                draw_term,
+                GROUP_CONCAT(
+                    CASE 
+                        WHEN value IN (
+                            SELECT number 
+                            FROM (
+                                SELECT value as number, MAX(draw_term) as last_draw
+                                FROM {lottery_type},
+                                json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                                WHERE draw_term < t1.draw_term {period_filter}
+                                GROUP BY value
+                                HAVING julianday(t1.draw_term) - julianday(last_draw) >= 10
+                            )
+                        ) THEN 'L'
+                        ELSE 'N'
+                    END
+                ) as pattern
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY draw_term
+        )
+        SELECT 
+            pattern,
+            COUNT(*) as frequency,
+            ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM NumberPatterns), 2) as percentage
+        FROM NumberPatterns
+        GROUP BY pattern
+        ORDER BY frequency DESC
+        LIMIT 10
+        """
+        
+        # 4. 遺漏值統計
+        query_stats = f"""
+        WITH NumberSequence AS (
+            SELECT 
+                draw_term,
+                value as number,
+                LAG(draw_term) OVER (PARTITION BY value ORDER BY draw_term) as prev_draw_term
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        MissingStats AS (
+            SELECT 
+                number,
+                COUNT(*) as appearance_count,
+                MAX(missing_periods) as max_missing,
+                AVG(missing_periods) as avg_missing,
+                MIN(missing_periods) as min_missing
+            FROM (
+                SELECT 
+                    number,
+                    draw_term,
+                    CAST(
+                        (
+                            (CAST(substr(draw_term, 1, 3) AS INTEGER) * 365) + 
+                            (CAST(substr(draw_term, 4, 2) AS INTEGER) * 30) + 
+                            CAST(substr(draw_term, 6, 2) AS INTEGER)
+                        ) - 
+                        (
+                            (CAST(substr(prev_draw_term, 1, 3) AS INTEGER) * 365) + 
+                            (CAST(substr(prev_draw_term, 4, 2) AS INTEGER) * 30) + 
+                            CAST(substr(prev_draw_term, 6, 2) AS INTEGER)
+                        ) AS INTEGER
+                    ) as missing_periods
+                FROM NumberSequence
+                WHERE prev_draw_term IS NOT NULL
+            )
+            GROUP BY number
+        )
+        SELECT 
+            number,
+            appearance_count,
+            ROUND(max_missing, 0) as max_missing_periods,
+            ROUND(avg_missing, 1) as avg_missing_periods,
+            min_missing as min_missing_periods
+        FROM MissingStats
+        ORDER BY avg_missing_periods DESC
+        LIMIT 10
+        """
+        
+        # 執行查詢
+        current_missing = pd.read_sql_query(query_current, conn)
+        historical_missing = pd.read_sql_query(query_historical, conn)
+        missing_patterns = pd.read_sql_query(query_patterns, conn)
+        missing_statistics = pd.read_sql_query(query_stats, conn)
+        
+        # 分析說明
+        analysis_description = {
+            '當前遺漏值': '''分析每個號碼目前的遺漏情況：
+            - 最後出現期數：號碼最後一次開出的期數
+            - 總出現次數：號碼在分析期間內出現的總次數
+            - 遺漏期數：目前已經遺漏的期數
+            這可以幫助我們找出長期未開出的號碼''',
+            
+            '歷史遺漏值': '''分析號碼的歷史遺漏規律：
+            - 最大遺漏期數：號碼曾經最長連續未開出的期數
+            - 平均遺漏期數：號碼平均每次遺漏的期數
+            這可以幫助我們了解號碼的出現週期''',
+            
+            '遺漏值模式': '''分析遺漏值的組合模式：
+            - L: 表示該號碼遺漏超過10期
+            - N: 表示該號碼最近有開出
+            這可以幫助我們發現遺漏值的組合規律''',
+            
+            '遺漏值統計': '''綜合統計號碼的遺漏特性：
+            - 出現次數：號碼在分析期間內的出現總次數
+            - 最大/平均/最小遺漏期數：完整的遺漏期數統計
+            這可以幫助我們全面了解號碼的遺漏特性'''
+        }
+        
+        conn.close()
+        
+        return {
+            'current_missing': current_missing.to_dict('records'),
+            'historical_missing': historical_missing.to_dict('records'),
+            'missing_patterns': missing_patterns.to_dict('records'),
+            'missing_statistics': missing_statistics.to_dict('records'),
+            'analysis_description': analysis_description
+        } 
+    
+    def network_analysis(self, lottery_type='big_lotto', periods=None):
+        """號碼關聯網絡分析
+        
+        Args:
+            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
+            periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下分析結果：
+            - nodes: 節點資訊（號碼及其特性）
+            - links: 連結資訊（號碼間的關聯）
+            - centrality: 中心性分析
+            - communities: 社群分析
+        """
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 節點分析（號碼出現頻率和特性）
+        query_nodes = f"""
+        WITH NumberStats AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as occurrence_rate,
+                AVG(CASE WHEN value <= {25 if lottery_type != 'daily_cash' else 20} THEN 1 ELSE 0 END) as small_rate,
+                AVG(CASE WHEN value % 2 = 1 THEN 1 ELSE 0 END) as odd_rate
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            frequency,
+            ROUND(occurrence_rate, 2) as occurrence_rate,
+            ROUND(small_rate * 100, 2) as small_number_rate,
+            ROUND(odd_rate * 100, 2) as odd_number_rate
+        FROM NumberStats
+        ORDER BY frequency DESC
+        """
+        
+        # 2. 連結分析（號碼間的共同出現關係）
+        query_links = f"""
+        WITH PairCounts AS (
+            SELECT 
+                n1.value as source,
+                n2.value as target,
+                COUNT(*) as weight,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as correlation_strength
+            FROM {lottery_type} t1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n2
+            WHERE 1=1 {period_filter}
+            AND n1.value < n2.value
+            GROUP BY n1.value, n2.value
+            HAVING weight >= 3
+        )
+        SELECT 
+            source,
+            target,
+            weight,
+            ROUND(correlation_strength, 2) as strength
+        FROM PairCounts
+        ORDER BY weight DESC
+        """
+        
+        # 3. 中心性分析
+        query_centrality = f"""
+        WITH NodeConnections AS (
+            SELECT 
+                value as number,
+                COUNT(DISTINCT draw_term) as degree,
+                AVG(
+                    CASE 
+                        WHEN value IN (
+                            SELECT value
+                            FROM json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                            WHERE draw_term = t1.draw_term
+                        ) THEN 1 
+                        ELSE 0 
+                    END
+                ) as betweenness
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            degree as degree_centrality,
+            ROUND(betweenness * 100, 2) as betweenness_centrality,
+            ROUND(degree * betweenness, 2) as eigenvector_centrality
+        FROM NodeConnections
+        ORDER BY eigenvector_centrality DESC
+        LIMIT 10
+        """
+        
+        # 4. 社群分析
+        query_communities = f"""
+        WITH NumberGroups AS (
+            SELECT 
+                draw_term,
+                GROUP_CONCAT(value) as number_group
+            FROM (
+                SELECT 
+                    draw_term,
+                    value,
+                    ROW_NUMBER() OVER (PARTITION BY draw_term ORDER BY value) as position
+                FROM {lottery_type},
+                json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                WHERE 1=1 {period_filter}
+            )
+            GROUP BY draw_term
+        ),
+        GroupPatterns AS (
+            SELECT 
+                number_group,
+                COUNT(*) as frequency,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(*) FROM NumberGroups
+                ) as occurrence_rate
+            FROM NumberGroups
+            GROUP BY number_group
+            HAVING frequency >= 2
+        )
+        SELECT 
+            number_group as community_numbers,
+            frequency as community_size,
+            ROUND(occurrence_rate, 2) as community_strength
+        FROM GroupPatterns
+        ORDER BY frequency DESC
+        LIMIT 10
+        """
+        
+        # 執行查詢
+        nodes = pd.read_sql_query(query_nodes, conn)
+        links = pd.read_sql_query(query_links, conn)
+        centrality = pd.read_sql_query(query_centrality, conn)
+        communities = pd.read_sql_query(query_communities, conn)
+        
+        # 分析說明
+        analysis_description = {
+            '節點分析': '''分析每個號碼的特性：
+            - 出現頻率：號碼在分析期間內的出現次數
+            - 出現率：號碼出現的機率
+            - 大小號比例：號碼為小號的比例
+            - 奇偶比例：號碼為奇數的比例
+            這可以幫助我們了解每個號碼的基本特性''',
+            
+            '連結分析': '''分析號碼之間的關聯關係：
+            - 連結權重：兩個號碼共同出現的次數
+            - 關聯強度：兩個號碼的關聯程度
+            這可以幫助我們找出經常一起出現的號碼組合''',
+            
+            '中心性分析': '''分析號碼在網絡中的重要性：
+            - 度中心性：與其他號碼的直接連接數量
+            - 中介中心性：號碼作為橋樑連接其他號碼的程度
+            - 特徵向量中心性：綜合考慮號碼的整體重要性
+            這可以幫助我們找出關鍵號碼''',
+            
+            '社群分析': '''分析號碼的群聚現象：
+            - 社群號碼：經常一起出現的號碼組合
+            - 社群大小：社群出現的次數
+            - 社群強度：社群出現的機率
+            這可以幫助我們發現穩定的號碼組合'''
+        }
+        
+        conn.close()
+        
+        return {
+            'nodes': nodes.to_dict('records'),
+            'links': links.to_dict('records'),
+            'centrality': centrality.to_dict('records'),
+            'communities': communities.to_dict('records'),
+            'analysis_description': analysis_description
+        }
+    
+    def probability_distribution_analysis(self, lottery_type='big_lotto', periods=None):
+        """機率分布分析
+        
+        Args:
+            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
+            periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下分析結果：
+            - empirical_distribution: 經驗分布分析
+            - theoretical_comparison: 與理論分布比較
+            - joint_distribution: 聯合機率分布
+            - conditional_probability: 條件機率分析
+        """
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 經驗分布分析
+        query_empirical = f"""
+        WITH NumberCounts AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as empirical_prob
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            frequency,
+            ROUND(empirical_prob, 2) as empirical_probability,
+            ROUND(
+                ABS(empirical_prob - (100.0 / {49 if lottery_type != 'daily_cash' else 39})), 
+                2
+            ) as deviation_from_uniform
+        FROM NumberCounts
+        ORDER BY deviation_from_uniform DESC
+        """
+        
+        # 2. 與理論分布比較
+        query_theoretical = f"""
+        WITH DrawStats AS (
+            SELECT 
+                draw_term,
+                COUNT(*) as numbers_drawn,
+                (
+                    SELECT COUNT(DISTINCT value)
+                    FROM {lottery_type},
+                    json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                    WHERE draw_term <= t1.draw_term {period_filter}
+                ) as unique_numbers,
+                MAX(value) - MIN(value) as range_size
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY draw_term
+        )
+        SELECT 
+            ROUND(AVG(numbers_drawn), 2) as avg_numbers_per_draw,
+            ROUND(AVG(unique_numbers), 2) as avg_unique_numbers,
+            ROUND(AVG(range_size), 2) as avg_range_size,
+            ROUND(
+                (
+                    SELECT COUNT(*)
+                    FROM DrawStats
+                    WHERE numbers_drawn > (SELECT AVG(numbers_drawn) FROM DrawStats)
+                ) * 100.0 / COUNT(*),
+                2
+            ) as above_mean_percentage
+        FROM DrawStats
+        """
+        
+        # 3. 聯合機率分布
+        query_joint = f"""
+        WITH PairProbs AS (
+            SELECT 
+                n1.value as num1,
+                n2.value as num2,
+                COUNT(*) as joint_frequency,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as joint_prob
+            FROM {lottery_type} t1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n1
+            JOIN json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''})) n2
+            WHERE 1=1 {period_filter}
+            AND n1.value < n2.value
+            GROUP BY n1.value, n2.value
+            HAVING joint_frequency >= 3
+        )
+        SELECT 
+            num1 || '-' || num2 as number_pair,
+            joint_frequency,
+            ROUND(joint_prob, 2) as joint_probability,
+            ROUND(
+                joint_prob / (
+                    SELECT COUNT(*) * 100.0 / (
+                        SELECT COUNT(DISTINCT draw_term) 
+                        FROM {lottery_type}
+                        WHERE 1=1 {period_filter}
+                    )
+                    FROM {lottery_type},
+                    json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                    WHERE value IN (num1, num2)
+                    AND 1=1 {period_filter}
+                ),
+                2
+            ) as dependency_ratio
+        FROM PairProbs
+        ORDER BY joint_probability DESC
+        LIMIT 10
+        """
+        
+        # 4. 條件機率分析
+        query_conditional = f"""
+        WITH NumberSequence AS (
+            SELECT 
+                draw_term,
+                value as number,
+                LAG(value) OVER (PARTITION BY value ORDER BY draw_term) as prev_number
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        ConditionalProbs AS (
+            SELECT 
+                number,
+                COUNT(*) as frequency,
+                SUM(CASE WHEN prev_number IS NOT NULL THEN 1 ELSE 0 END) as conditional_count,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as marginal_prob,
+                SUM(CASE WHEN prev_number IS NOT NULL THEN 1 ELSE 0 END) * 100.0 / 
+                NULLIF(COUNT(prev_number), 0) as conditional_prob
+            FROM NumberSequence
+            GROUP BY number
+        )
+        SELECT 
+            number,
+            frequency,
+            ROUND(marginal_prob, 2) as marginal_probability,
+            ROUND(conditional_prob, 2) as conditional_probability,
+            ROUND(
+                CASE 
+                    WHEN marginal_prob > 0 
+                    THEN (conditional_prob - marginal_prob) / marginal_prob * 100 
+                    ELSE 0 
+                END,
+                2
+            ) as probability_lift
+        FROM ConditionalProbs
+        WHERE conditional_count >= 3
+        ORDER BY probability_lift DESC
+        LIMIT 10
+        """
+        
+        # 執行查詢
+        empirical = pd.read_sql_query(query_empirical, conn)
+        theoretical = pd.read_sql_query(query_theoretical, conn)
+        joint = pd.read_sql_query(query_joint, conn)
+        conditional = pd.read_sql_query(query_conditional, conn)
+        
+        # 分析說明
+        analysis_description = {
+            '經驗分布分析': '''分析實際開出的號碼分布：
+            - 出現頻率：號碼在分析期間內的出現次數
+            - 經驗機率：實際觀察到的出現機率
+            - 與均勻分布的偏差：實際機率與理論機率的差異
+            這可以幫助我們了解號碼的實際分布情況''',
+            
+            '理論分布比較': '''將實際分布與理論分布進行比較：
+            - 每期平均號碼數：實際開出的平均號碼數量
+            - 平均不重複號碼數：不同號碼的平均數量
+            - 平均範圍大小：號碼的平均分布範圍
+            - 高於平均值比例：超過平均值的比例
+            這可以幫助我們發現是否存在系統性偏差''',
+            
+            '聯合機率分布': '''分析號碼之間的聯合出現機率：
+            - 號碼對：一起出現的兩個號碼
+            - 聯合頻率：一起出現的次數
+            - 聯合機率：一起出現的機率
+            - 依賴比率：實際聯合機率與獨立情況下的理論機率之比
+            這可以幫助我們了解號碼之間的相互關係''',
+            
+            '條件機率分析': '''分析號碼的條件機率：
+            - 邊際機率：號碼單獨出現的機率
+            - 條件機率：在特定條件下出現的機率
+            - 機率提升度：條件機率相對於邊際機率的提升程度
+            這可以幫助我們了解號碼出現的條件依賴關係'''
+        }
+        
+        conn.close()
+        
+        return {
+            'empirical_distribution': empirical.to_dict('records'),
+            'theoretical_comparison': theoretical.to_dict('records')[0],  # 只有一行數據
+            'joint_distribution': joint.to_dict('records'),
+            'conditional_probability': conditional.to_dict('records'),
+            'analysis_description': analysis_description
+        }

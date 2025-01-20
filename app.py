@@ -1,14 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 from lottery_analysis import LotteryAnalysis
-import sqlite3
 
 app = Flask(__name__)
 analysis = LotteryAnalysis()
-
-def get_db_connection():
-    conn = sqlite3.connect('lottery.db')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 @app.route('/')
 def index():
@@ -16,26 +10,20 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
+    data = request.get_json()
+    lottery_type = data.get('lottery_type', 'big_lotto')
+    analysis_type = data.get('analysis_type', 'basic')
+    periods = data.get('periods')
+    
+    if periods:
+        try:
+            periods = int(periods)
+            if periods <= 0:
+                return jsonify({'error': '期數必須大於 0'})
+        except ValueError:
+            return jsonify({'error': '請輸入有效的期數'})
+    
     try:
-        with get_db_connection() as conn:
-            # 使用数据库连接进行操作
-            cursor = conn.cursor()
-            # ... 数据库操作 ...
-            
-        # 其他代码保持不变
-        data = request.get_json()
-        lottery_type = data.get('lottery_type', 'big_lotto')
-        analysis_type = data.get('analysis_type', 'basic')
-        periods = data.get('periods')
-        
-        if periods:
-            try:
-                periods = int(periods)
-                if periods <= 0:
-                    return jsonify({'error': '期數必須大於 0'})
-            except ValueError:
-                return jsonify({'error': '請輸入有效的期數'})
-        
         if analysis_type == 'basic':
             result = analysis.basic_statistics(lottery_type, periods)
         elif analysis_type == 'interval':
@@ -48,6 +36,18 @@ def analyze():
             result = analysis.prediction_analysis(lottery_type, periods)
         elif analysis_type == 'recommend':
             result = analysis.recommend_numbers(lottery_type, periods)
+        elif analysis_type == 'combination':
+            result = analysis.combination_pattern_analysis(lottery_type, periods)
+        elif analysis_type == 'combination_prediction':
+            result = analysis.combination_prediction(lottery_type, periods)
+        elif analysis_type == 'advanced_statistics':
+            result = analysis.advanced_statistics(lottery_type, periods)
+        elif analysis_type == 'missing_value':
+            result = analysis.missing_value_analysis(lottery_type, periods)
+        elif analysis_type == 'network':
+            result = analysis.network_analysis(lottery_type, periods)
+        elif analysis_type == 'probability':
+            result = analysis.probability_distribution_analysis(lottery_type, periods)
         else:
             return jsonify({'error': '無效的分析類型'})
         
