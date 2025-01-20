@@ -1,8 +1,12 @@
 from flask import Flask, render_template, request, jsonify
 from lottery_analysis import LotteryAnalysis
+import sqlite3  # 直接导入即可使用
 
 app = Flask(__name__)
 analysis = LotteryAnalysis()
+
+# 示例连接数据库
+conn = sqlite3.connect('your_database.db')
 
 @app.route('/')
 def index():
