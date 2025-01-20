@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 from lottery_analysis import LotteryAnalysis
-import sqlite3  # 直接导入即可使用
+import sqlite3
 
 app = Flask(__name__)
 analysis = LotteryAnalysis()
 
-# 示例连接数据库
-conn = sqlite3.connect('your_database.db')
+def get_db_connection():
+    conn = sqlite3.connect('lottery.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
 @app.route('/')
 def index():
@@ -14,20 +16,26 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    data = request.get_json()
-    lottery_type = data.get('lottery_type', 'big_lotto')
-    analysis_type = data.get('analysis_type', 'basic')
-    periods = data.get('periods')
-    
-    if periods:
-        try:
-            periods = int(periods)
-            if periods <= 0:
-                return jsonify({'error': '期數必須大於 0'})
-        except ValueError:
-            return jsonify({'error': '請輸入有效的期數'})
-    
     try:
+        with get_db_connection() as conn:
+            # 使用数据库连接进行操作
+            cursor = conn.cursor()
+            # ... 数据库操作 ...
+            
+        # 其他代码保持不变
+        data = request.get_json()
+        lottery_type = data.get('lottery_type', 'big_lotto')
+        analysis_type = data.get('analysis_type', 'basic')
+        periods = data.get('periods')
+        
+        if periods:
+            try:
+                periods = int(periods)
+                if periods <= 0:
+                    return jsonify({'error': '期數必須大於 0'})
+            except ValueError:
+                return jsonify({'error': '請輸入有效的期數'})
+        
         if analysis_type == 'basic':
             result = analysis.basic_statistics(lottery_type, periods)
         elif analysis_type == 'interval':
