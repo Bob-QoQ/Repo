@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from lottery_analysis import LotteryAnalysis
+import sqlite3
 
 app = Flask(__name__)
 analysis = LotteryAnalysis()
@@ -56,10 +57,31 @@ def analyze():
         return jsonify({'error': str(e)})
 
 @app.route('/data_range')
-def get_data_range():
+def data_range():
     lottery_type = request.args.get('lottery_type', 'big_lotto')
-    result = analysis.get_data_range(lottery_type)
-    return jsonify(result)
+    conn = sqlite3.connect('lottery.db')
+    cursor = conn.cursor()
+    
+    query = f"""
+        SELECT 
+            MIN(draw_date) as start_date,
+            MAX(draw_date) as end_date,
+            COUNT(*) as total_draws,
+            MAX(draw_term) as latest_term
+        FROM {lottery_type}
+    """
+    
+    cursor.execute(query)
+    start_date, end_date, total_draws, latest_term = cursor.fetchone()
+    
+    conn.close()
+    
+    return jsonify({
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_draws': total_draws,
+        'latest_term': latest_term
+    })
 
 @app.route('/recommend', methods=['POST'])
 def recommend():
@@ -77,6 +99,18 @@ def recommend():
     
     try:
         result = analysis.recommend_numbers(lottery_type, periods)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/recommend_from_hot_cold', methods=['POST'])
+def recommend_from_hot_cold():
+    data = request.get_json()
+    lottery_type = data.get('lottery_type', 'big_lotto')
+    periods = data.get('periods')
+    
+    try:
+        result = analysis.recommend_from_hot_cold(lottery_type, periods)
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)})

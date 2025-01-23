@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 import numpy as np
+import random
 
 class LotteryAnalysis:
     def __init__(self, db_path='lottery.db'):
@@ -17,10 +18,17 @@ class LotteryAnalysis:
         Args:
             lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
             periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下分析結果：
+            - summary_stats: 基本統計摘要
+            - hot_numbers: 熱門號碼分析
+            - cold_numbers: 冷門號碼分析
+            - number_trends: 號碼趨勢分析
         """
         conn = self._get_connection()
         
-        # 如果指定了期數，需要先找出最近 N 期的期號
+        # 設定期數過濾條件
         if periods:
             period_filter = f"""
             AND draw_term IN (
@@ -33,19 +41,212 @@ class LotteryAnalysis:
         else:
             period_filter = ""
         
-        # 修改所有查詢方法，加入期數過濾
-        number_freq = self._get_number_frequency(conn, lottery_type, period_filter)
-        special_freq = self._get_special_number_frequency(conn, lottery_type, period_filter)
-        common_combs = self._get_common_combinations(conn, lottery_type, period_filter)
-        cold_nums = self._get_cold_numbers(conn, lottery_type, period_filter)
+        # 1. 基本統計摘要
+        query_summary = f"""
+        WITH NumberStats AS (
+            SELECT 
+                COUNT(DISTINCT draw_term) as total_draws,
+                COUNT(DISTINCT value) as unique_numbers,
+                MIN(value) as min_number,
+                MAX(value) as max_number,
+                (
+                    SELECT GROUP_CONCAT(value)
+                    FROM (
+                        SELECT value, COUNT(*) as freq
+                        FROM {lottery_type},
+                        json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                        WHERE 1=1 {period_filter}
+                        GROUP BY value
+                        ORDER BY freq DESC
+                        LIMIT 3
+                    )
+                ) as most_common_numbers
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        )
+        SELECT 
+            total_draws,
+            unique_numbers,
+            min_number,
+            max_number,
+            most_common_numbers
+        FROM NumberStats
+        """
+        
+        # 2. 熱門號碼分析（最近常開出的號碼）
+        query_hot = f"""
+        WITH RecentDraws AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                MAX(draw_term) as last_appearance,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as percentage,
+                GROUP_CONCAT(draw_term) as recent_draws
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+            HAVING frequency >= 3
+        )
+        SELECT 
+            number,
+            frequency,
+            ROUND(percentage, 2) as percentage,
+            last_appearance,
+            recent_draws
+        FROM RecentDraws
+        ORDER BY frequency DESC, last_appearance DESC
+        LIMIT 20
+        """
+        
+        # 3. 冷門號碼分析（最近很少開出的號碼）
+        query_cold = f"""
+        WITH NumberStats AS (
+            SELECT 
+                value as number,
+                COUNT(*) as total_appearances,                    -- 總出現次數
+                MAX(draw_term) as last_appearance,               -- 最後出現期數
+                (
+                    SELECT COUNT(DISTINCT draw_term)
+                    FROM {lottery_type}
+                    WHERE draw_term > MAX(t1.draw_term)
+                    {period_filter}
+                ) as draws_since_last,                          -- 最近遺漏期數
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as historical_percentage,                      -- 歷史出現率
+                (
+                    SELECT AVG(cnt) * 0.8                       -- 計算低頻門檻
+                    FROM (
+                        SELECT COUNT(*) as cnt
+                        FROM {lottery_type},
+                        json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                        WHERE 1=1 {period_filter}
+                        GROUP BY value
+                    )
+                ) as low_freq_threshold
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            total_appearances,
+            last_appearance,
+            draws_since_last,
+            ROUND(historical_percentage, 2) as historical_percentage,
+            CASE 
+                WHEN total_appearances < low_freq_threshold THEN '低頻'
+                WHEN draws_since_last > 10 THEN '遺漏'
+                ELSE '正常'
+            END as cold_type,
+            low_freq_threshold as threshold
+        FROM NumberStats
+        WHERE total_appearances < low_freq_threshold OR draws_since_last > 10
+        ORDER BY 
+            cold_type,
+            CASE cold_type
+                WHEN '低頻' THEN total_appearances
+                WHEN '遺漏' THEN draws_since_last
+                ELSE 0
+            END DESC
+        """
+        
+        # 4. 號碼趨勢分析
+        query_trends = f"""
+        WITH PeriodStats AS (
+            SELECT 
+                value as number,
+                COUNT(*) as recent_frequency,
+                LAG(COUNT(*)) OVER (PARTITION BY value ORDER BY value) as previous_frequency
+            FROM {lottery_type},
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            recent_frequency,
+            COALESCE(previous_frequency, 0) as previous_frequency,
+            CASE 
+                WHEN previous_frequency > 0 
+                THEN ROUND((recent_frequency - previous_frequency) * 100.0 / previous_frequency, 2)
+                ELSE 0 
+            END as trend_percentage,
+            CASE 
+                WHEN recent_frequency > COALESCE(previous_frequency, 0) THEN '上升'
+                WHEN recent_frequency < COALESCE(previous_frequency, 0) THEN '下降'
+                ELSE '持平'
+            END as trend_direction
+        FROM PeriodStats
+        ORDER BY ABS(trend_percentage) DESC
+        """
+        
+        # 執行查詢
+        summary_stats = pd.read_sql_query(query_summary, conn).to_dict('records')[0]
+        hot_numbers = pd.read_sql_query(query_hot, conn).to_dict('records')
+        cold_numbers = pd.read_sql_query(query_cold, conn).to_dict('records')
+        number_trends = pd.read_sql_query(query_trends, conn).to_dict('records')
+        
+        # 分析說明
+        analysis_description = {
+            '熱門號碼分析': '''分析近期頻繁出現的號碼。
+            包含：
+            - 出現頻率
+            - 出現率
+            - 最近開出期數
+            - 開出記錄
+            這些號碼可能有較高的開出機率。''',
+            
+            '低頻號碼分析': '''統計歷史上出現次數較少的號碼。
+            判定標準：
+            - 出現次數低於平均值的80%
+            
+            特點：
+            - 雖然出現頻率低
+            - 但根據機率均衡原理
+            - 可能即將開出''',
+            
+            '遺漏號碼分析': '''找出已經超過10期未開出的號碼。
+            
+            分析重點：
+            - 最後開出期數
+            - 遺漏期數統計
+            - 歷史出現率
+            
+            理論基礎：
+            根據機率理論，長期未開出的號碼
+            可能會有回補的趨勢。''',
+            
+            '趨勢分析': '''比較號碼在不同時期的出現頻率變化。
+            
+            分析內容：
+            - 近期開出頻率
+            - 前期開出頻率
+            - 變化幅度計算
+            - 趨勢方向判定
+            
+            用途：
+            幫助預測號碼未來可能的
+            開出機率變化趨勢。'''
+        }
         
         conn.close()
         
         return {
-            'number_frequency': number_freq,
-            'special_number_frequency': special_freq,
-            'common_combinations': common_combs,
-            'cold_numbers': cold_nums
+            'summary_stats': summary_stats,
+            'hot_numbers': hot_numbers,
+            'cold_numbers': cold_numbers,
+            'number_trends': number_trends,
+            'analysis_description': analysis_description
         }
     
     def _get_number_frequency(self, conn, lottery_type, period_filter=""):
@@ -457,7 +658,6 @@ class LotteryAnalysis:
         WHERE gap IS NOT NULL
         GROUP BY gap
         ORDER BY frequency DESC
-        LIMIT 10
         """
         
         df = pd.read_sql_query(query, conn)
@@ -2434,5 +2634,163 @@ class LotteryAnalysis:
             'theoretical_comparison': theoretical.to_dict('records')[0],  # 只有一行數據
             'joint_distribution': joint.to_dict('records'),
             'conditional_probability': conditional.to_dict('records'),
+            'analysis_description': analysis_description
+        }
+    
+    def recommend_from_hot_cold(self, lottery_type='big_lotto', periods=None):
+        """基於冷熱門號碼分析的號碼推薦系統
+        
+        Args:
+            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
+            periods (int, optional): 要分析的期數，None 表示分析所有資料
+            
+        Returns:
+            dict: 包含以下推薦結果：
+            - balanced_numbers: 平衡型選號推薦
+            - aggressive_numbers: 進取型選號推薦
+            - conservative_numbers: 保守型選號推薦
+            - analysis_description: 推薦說明
+        """
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 1. 綜合分析查詢
+        query = f"""
+        WITH NumberAnalysis AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                MAX(draw_term) as last_appearance,
+                (
+                    SELECT COUNT(DISTINCT draw_term)
+                    FROM {lottery_type}
+                    WHERE draw_term > MAX(t1.draw_term)
+                    {period_filter}
+                ) as missing_draws,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as hit_rate,
+                CASE 
+                    WHEN COUNT(*) > (
+                        SELECT AVG(cnt)
+                        FROM (
+                            SELECT COUNT(*) as cnt
+                            FROM {lottery_type},
+                            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                            WHERE 1=1 {period_filter}
+                            GROUP BY value
+                        )
+                    ) THEN 'H'  -- Hot
+                    ELSE 'C'    -- Cold
+                END as number_type
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            frequency,
+            last_appearance,
+            missing_draws,
+            ROUND(hit_rate, 2) as hit_rate,
+            number_type,
+            ROUND(
+                (hit_rate * 0.4) + 
+                (CASE WHEN missing_draws > 0 
+                    THEN (1.0 / missing_draws) * 100 
+                    ELSE 100 
+                END * 0.6),
+                2
+            ) as recommendation_score
+        FROM NumberAnalysis
+        ORDER BY recommendation_score DESC
+        """
+        
+        # 執行查詢
+        df = pd.read_sql_query(query, conn)
+        
+        # 2. 生成推薦組合
+        hot_numbers = df[df['number_type'] == 'H']['number'].tolist()
+        cold_numbers = df[df['number_type'] == 'C']['number'].tolist()
+        
+        # 修改推薦組合生成部分
+        recommendations = {
+            'balanced': [],    # 平衡型：3熱門 + 3冷門
+            'aggressive': [],  # 進取型：4熱門 + 2冷門
+            'conservative': [] # 保守型：2熱門 + 4冷門
+        }
+        
+        # 每種類型產生5組
+        for _ in range(5):
+            # 平衡型選號（3熱門 + 3冷門）
+            balanced = (
+                random.sample(hot_numbers[:10], 3) + 
+                random.sample(cold_numbers[:10], 3)
+            )
+            balanced.sort()
+            recommendations['balanced'].append(balanced)
+            
+            # 進取型選號（4熱門 + 2冷門）
+            aggressive = (
+                random.sample(hot_numbers[:8], 4) + 
+                random.sample(cold_numbers[:8], 2)
+            )
+            aggressive.sort()
+            recommendations['aggressive'].append(aggressive)
+            
+            # 保守型選號（2熱門 + 4冷門）
+            conservative = (
+                random.sample(hot_numbers[:8], 2) + 
+                random.sample(cold_numbers[:8], 4)
+            )
+            conservative.sort()
+            recommendations['conservative'].append(conservative)
+        
+        # 分析說明
+        analysis_description = {
+            '選號策略': '''根據號碼的冷熱分析進行推薦。
+            
+            熱門號碼：近期開出頻率高的號碼
+            冷門號碼：近期開出頻率低或遺漏期數多的號碼''',
+            
+            '推薦組合': '''提供三種不同風格的選號組合：
+            
+            平衡型：3熱門 + 3冷門，適合一般玩家
+            進取型：4熱門 + 2冷門，追求高命中率
+            保守型：2熱門 + 4冷門，期待遺漏值回補''',
+            
+            '使用建議': '''建議根據個人風格選擇合適的組合類型。
+            
+            參考依據：
+            - 可以參考號碼的推薦分數
+            - 可以參考號碼的歷史表現
+            - 可以參考號碼的遺漏情況
+            
+            溫馨提醒：
+            記得理性購買，適度娛樂。'''
+        }
+        
+        conn.close()
+        
+        return {
+            'balanced_numbers': recommendations['balanced'],
+            'aggressive_numbers': recommendations['aggressive'],
+            'conservative_numbers': recommendations['conservative'],
+            'number_analysis': df.to_dict('records'),
             'analysis_description': analysis_description
         }

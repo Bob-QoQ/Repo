@@ -76,6 +76,12 @@
         
         <div id="dataRange" class="result-section"></div>
         <div id="result" class="result-section"></div>
+
+        <!-- 在基本統計分析結果下方添加推薦按鈕 -->
+        <button class="btn btn-success mt-3" onclick="getRecommendation()">獲取選號推薦</button>
+
+        <!-- 添加推薦結果顯示區域 -->
+        <div id="recommendationResult" class="mt-3" style="display: none;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -96,6 +102,9 @@
                 .then(data => {
                     document.getElementById('dataRange').innerHTML = `
                         <h4>資料範圍</h4>
+                        <div class="alert alert-info">
+                            <strong>最新一期：</strong> 第 ${data.latest_term} 期
+                        </div>
                         <p>從 ${data.start_date} 到 ${data.end_date}</p>
                         <p>共 ${data.total_draws} 期</p>
                     `;
@@ -127,7 +136,7 @@
                 hideLoading();
                 if (result.error) {
                     document.getElementById('result').innerHTML = `
-                        <div class="alert alert-danger">${result.error}</div>
+                        <div class="alert alert-danger">分析過程發生錯誤: ${result.error}</div>
                     `;
                     return;
                 }
@@ -189,30 +198,103 @@
         function displayBasicStats(result) {
             let html = '<div class="mt-3">';
             
-            // 號碼頻率
-            html += '<h5>最常出現的號碼</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
-            result.number_frequency.slice(0, 10).forEach(num => {
-                html += `<tr><td>${num.number}</td><td>${num.frequency}</td><td>${num.percentage}%</td></tr>`;
+            // 分析說明
+            html += '<div class="card mb-4">';
+            html += '<div class="card-header bg-light"><h5 class="mb-0">分析方法說明</h5></div>';
+            html += '<div class="card-body">';
+            html += '<div class="row">';
+            
+            // 熱門號碼說明
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100 border-danger">';
+            html += '<div class="card-header bg-danger text-white">熱門號碼分析</div>';
+            html += '<div class="card-body">';
+            html += '<p class="card-text">' + (result.analysis_description['熱門號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '</div></div></div>';
+            
+            // 低頻號碼說明
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100 border-secondary">';
+            html += '<div class="card-header bg-secondary text-white">低頻號碼分析</div>';
+            html += '<div class="card-body">';
+            html += '<p class="card-text">' + (result.analysis_description['低頻號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '</div></div></div>';
+            
+            // 遺漏號碼說明
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100 border-primary">';
+            html += '<div class="card-header bg-primary text-white">遺漏號碼分析</div>';
+            html += '<div class="card-body">';
+            html += '<p class="card-text">' + (result.analysis_description['遺漏號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '</div></div></div>';
+            
+            // 趨勢分析說明
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100" style="border-color: #8B4513;">';
+            html += '<div class="card-header text-white" style="background-color: #8B4513;">趨勢分析</div>';
+            html += '<div class="card-body">';
+            html += '<p class="card-text">' + (result.analysis_description['趨勢分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '</div></div></div>';
+            
+            html += '</div></div></div>';
+            
+            // 基本統計摘要
+            html += '<h5>基本統計摘要</h5>';
+            html += '<div class="table-responsive"><table class="table table-striped">';
+            html += `<tr><th>總開獎次數</th><td>${result.summary_stats.total_draws}期</td></tr>`;
+            html += `<tr><th>號碼範圍</th><td>${result.summary_stats.min_number} - ${result.summary_stats.max_number}</td></tr>`;
+            html += `<tr><th>最常開出號碼</th><td>${result.summary_stats.most_common_numbers}</td></tr>`;
+            html += '</table></div>';
+            
+            // 熱門號碼分析
+            html += '<h5 class="mt-4">熱門號碼分析</h5><div class="table-responsive"><table class="table table-striped">';
+            html += '<thead><tr><th>號碼</th><th>出現頻率</th><th>出現率</th><th>最近開出</th><th>開出記錄</th></tr></thead><tbody>';
+            result.hot_numbers.forEach(num => {
+                html += `<tr>
+                    <td><span class="badge bg-danger">${num.number}</span></td>
+                    <td>${num.frequency}</td>
+                    <td>${num.percentage}%</td>
+                    <td>${num.last_appearance}</td>
+                    <td><small>${num.recent_draws}</small></td>
+                </tr>`;
             });
             html += '</tbody></table></div>';
             
-            // 特別號頻率
-            if (result.special_number_frequency) {
-                html += '<h5 class="mt-4">最常出現的特別號</h5><div class="table-responsive"><table class="table table-striped">';
-                html += '<thead><tr><th>號碼</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
-                result.special_number_frequency.slice(0, 10).forEach(num => {
-                    html += `<tr><td>${num.number}</td><td>${num.frequency}</td><td>${num.percentage}%</td></tr>`;
-                });
-                html += '</tbody></table></div>';
-            }
+            // 冷門號碼分析
+            html += '<h5 class="mt-4">冷門號碼分析</h5>';
             
-            // 冷門號碼
-            html += '<h5 class="mt-4">最久沒出現的號碼</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>最後出現日期</th><th>間隔天數</th></tr></thead><tbody>';
-            result.cold_numbers.slice(0, 5).forEach(num => {
-                html += `<tr><td>${num.number}</td><td>${num.last_date}</td><td>${num.days_since_last}</td></tr>`;
-            });
+            // 低頻號碼
+            html += '<h6 class="mt-3">低頻號碼（出現頻率低於平均值的80%）</h6>';
+            html += '<div class="table-responsive"><table class="table table-striped">';
+            html += '<thead><tr><th>號碼</th><th>總出現次數</th><th>最後開出</th><th>遺漏期數</th><th>歷史出現率</th></tr></thead><tbody>';
+            result.cold_numbers
+                .filter(num => num.cold_type === '低頻')
+                .forEach(num => {
+                    html += `<tr>
+                        <td><span class="badge bg-secondary">${num.number}</span></td>
+                        <td>${num.total_appearances}</td>
+                        <td>${num.last_appearance}</td>
+                        <td>${num.draws_since_last}</td>
+                        <td>${num.historical_percentage}%</td>
+                    </tr>`;
+                });
+            html += '</tbody></table></div>';
+            
+            // 遺漏號碼
+            html += '<h6 class="mt-3">遺漏號碼（超過10期未開出）</h6>';
+            html += '<div class="table-responsive"><table class="table table-striped">';
+            html += '<thead><tr><th>號碼</th><th>總出現次數</th><th>最後開出</th><th>遺漏期數</th><th>歷史出現率</th></tr></thead><tbody>';
+            result.cold_numbers
+                .filter(num => num.cold_type === '遺漏')
+                .forEach(num => {
+                    html += `<tr>
+                        <td><span class="badge bg-primary">${num.number}</span></td>
+                        <td>${num.total_appearances}</td>
+                        <td>${num.last_appearance}</td>
+                        <td>${num.draws_since_last}</td>
+                        <td>${num.historical_percentage}%</td>
+                    </tr>`;
+                });
             html += '</tbody></table></div>';
             
             return html + '</div>';
@@ -406,443 +488,145 @@
         }
 
         function displayRecommendation(result) {
-            let html = '<div class="mt-3">';
+            let html = '<div class="card">';
             
-            // 分析依據
-            html += '<h5>分析依據</h5><div class="card mb-4"><div class="card-body">';
-            html += '<h6>熱門號碼選擇標準：</h6><ul>';
-            result.analysis_summary.hot_numbers_criteria.forEach(criterion => {
-                html += `<li>${criterion}</li>`;
-            });
-            html += '</ul><h6>冷門號碼選擇標準：</h6><ul>';
-            result.analysis_summary.cold_numbers_criteria.forEach(criterion => {
-                html += `<li>${criterion}</li>`;
-            });
+            // 分析說明
+            html += '<div class="card-header bg-primary text-white">選號推薦</div>';
+            html += '<div class="card-body">';
+            html += '<div class="mb-4"><h6>推薦說明：</h6>';
+            html += '<div class="card-text">';
+            for (let key in result.analysis_description) {
+                html += `<div class="mb-3">`;
+                html += `<strong class="d-block mb-2">${key}：</strong>`;
+                html += `<p class="ms-3">${(result.analysis_description[key] || '').replace(/\n/g, '<br>')}</p>`;
+                html += `</div>`;
+            }
             html += '</div></div>';
             
-            // 熱門號碼推薦
-            html += '<h5>推薦熱門號碼</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>近期出現次數</th><th>出現率</th><th>趨勢評分</th></tr></thead><tbody>';
-            result.hot_numbers.forEach(num => {
+            // 修改推薦號碼顯示部分
+            html += '<div class="row">';
+            
+            // 平衡型
+            html += '<div class="col-md-4">';
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-info text-white">平衡型選號</div>';
+            html += '<div class="card-body">';
+            html += '<div class="alert alert-info mb-3">適合一般玩家，平衡熱門與冷門號碼</div>';
+            result.balanced_numbers.forEach((numbers, index) => {
+                html += '<div class="mb-4 p-2 border rounded">';
+                html += `<h5 class="text-center text-muted">第 ${index + 1} 組</h5>`;
+                html += '<div class="d-flex justify-content-center">';
+                numbers.forEach(num => {
+                    html += `<span class="badge bg-info mx-1" style="font-size: 1.2em;">${num}</span>`;
+                });
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '<div class="text-center mt-2">';
+            html += '<span class="badge bg-danger me-2">3個熱門號碼</span>';
+            html += '<span class="badge bg-primary">3個冷門號碼</span>';
+            html += '</div>';
+            html += '</div></div></div>';
+            
+            // 進取型
+            html += '<div class="col-md-4">';
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-success text-white">進取型選號</div>';
+            html += '<div class="card-body">';
+            html += '<div class="alert alert-success mb-3">追求高命中率，偏好熱門號碼</div>';
+            result.aggressive_numbers.forEach((numbers, index) => {
+                html += '<div class="mb-4 p-2 border rounded">';
+                html += `<h5 class="text-center text-muted">第 ${index + 1} 組</h5>`;
+                html += '<div class="d-flex justify-content-center">';
+                numbers.forEach(num => {
+                    html += `<span class="badge bg-success mx-1" style="font-size: 1.2em;">${num}</span>`;
+                });
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '<div class="text-center mt-2">';
+            html += '<span class="badge bg-danger me-2">4個熱門號碼</span>';
+            html += '<span class="badge bg-primary">2個冷門號碼</span>';
+            html += '</div>';
+            html += '</div></div></div>';
+            
+            // 保守型
+            html += '<div class="col-md-4">';
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-warning">保守型選號</div>';
+            html += '<div class="card-body">';
+            html += '<div class="alert alert-warning mb-3">期待遺漏值回補，偏好冷門號碼</div>';
+            result.conservative_numbers.forEach((numbers, index) => {
+                html += '<div class="mb-4 p-2 border rounded">';
+                html += `<h5 class="text-center text-muted">第 ${index + 1} 組</h5>`;
+                html += '<div class="d-flex justify-content-center">';
+                numbers.forEach(num => {
+                    html += `<span class="badge bg-warning mx-1" style="font-size: 1.2em;">${num}</span>`;
+                });
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '<div class="text-center mt-2">';
+            html += '<span class="badge bg-danger me-2">2個熱門號碼</span>';
+            html += '<span class="badge bg-primary">4個冷門號碼</span>';
+            html += '</div>';
+            html += '</div></div></div>';
+            
+            html += '</div>';  // row end
+            
+            // 號碼分析詳情
+            html += '<div class="mt-4">';
+            html += '<h6>號碼分析詳情：</h6>';
+            html += '<div class="table-responsive"><table class="table table-sm table-striped">';
+            html += '<thead><tr><th>號碼</th><th>頻率</th><th>最後開出</th><th>遺漏期數</th><th>命中率</th><th>類型</th><th>推薦分數</th></tr></thead><tbody>';
+            result.number_analysis.forEach(num => {
+                let typeClass = num.number_type === 'H' ? 'text-danger' : 'text-primary';
                 html += `<tr>
-                    <td><span class="badge bg-primary">${num.number}</span></td>
+                    <td>${num.number}</td>
                     <td>${num.frequency}</td>
-                    <td>${num.percentage}%</td>
-                    <td>${num.trend_score}</td>
+                    <td>${num.last_appearance}</td>
+                    <td>${num.missing_draws}</td>
+                    <td>${num.hit_rate}%</td>
+                    <td class="${typeClass}">${num.number_type === 'H' ? '熱門' : '冷門'}</td>
+                    <td>${num.recommendation_score}</td>
                 </tr>`;
             });
             html += '</tbody></table></div>';
+            html += '</div>';
             
-            // 冷門號碼推薦
-            html += '<h5 class="mt-4">推薦冷門號碼</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>最後出現日期</th><th>間隔天數</th><th>總出現次數</th></tr></thead><tbody>';
-            result.cold_numbers.forEach(num => {
-                html += `<tr>
-                    <td><span class="badge bg-secondary">${num.number}</span></td>
-                    <td>${num.last_date}</td>
-                    <td>${num.days_since_last}</td>
-                    <td>${num.total_appearances}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
-        }
-
-        function displayCombinationAnalysis(result) {
-            let html = '<div class="mt-3">';
-            
-            // 連續號碼組合
-            html += '<h5>連續號碼組合分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>模式</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
-            result.consecutive_patterns.forEach(pattern => {
-                html += `<tr>
-                    <td>${pattern.pattern_type}</td>
-                    <td>${pattern.frequency}</td>
-                    <td>${pattern.percentage}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 同尾數組合
-            html += '<h5 class="mt-4">同尾數組合分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>模式</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
-            result.same_tail_patterns.forEach(pattern => {
-                html += `<tr>
-                    <td>${pattern.pattern_type}</td>
-                    <td>${pattern.frequency}</td>
-                    <td>${pattern.percentage}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 等差數列組合
-            html += '<h5 class="mt-4">等差數列組合分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>模式</th><th>出現次數</th><th>百分比</th><th>範例</th></tr></thead><tbody>';
-            result.arithmetic_patterns.forEach(pattern => {
-                html += `<tr>
-                    <td>${pattern.pattern_type}</td>
-                    <td>${pattern.frequency}</td>
-                    <td>${pattern.percentage}%</td>
-                    <td>${pattern.examples}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 鄰近號碼組合
-            html += '<h5 class="mt-4">鄰近號碼組合分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>模式</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
-            result.adjacent_patterns.forEach(pattern => {
-                html += `<tr>
-                    <td>${pattern.pattern_type}</td>
-                    <td>${pattern.frequency}</td>
-                    <td>${pattern.percentage}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
-        }
-
-        function displayCombinationPrediction(result) {
-            let html = '<div class="mt-3">';
-            
-            // 分析標準
-            html += '<h5>分析標準</h5><div class="card mb-4"><div class="card-body">';
-            html += '<h6>高機率組合：</h6><ul>';
-            result.analysis_criteria.high_prob.forEach(criterion => {
-                html += `<li>${criterion}</li>`;
-            });
-            html += '</ul><h6>平衡性組合：</h6><ul>';
-            result.analysis_criteria.balanced.forEach(criterion => {
-                html += `<li>${criterion}</li>`;
-            });
-            html += '</ul><h6>模式型組合：</h6><ul>';
-            result.analysis_criteria.pattern.forEach(criterion => {
-                html += `<li>${criterion}</li>`;
-            });
             html += '</div></div>';
             
-            // 高機率組合
-            html += '<h5>高機率組合</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼組合</th><th>出現次數</th><th>出現率</th></tr></thead><tbody>';
-            result.high_prob_combinations.forEach(comb => {
-                html += `<tr>
-                    <td>${comb.number_pair}</td>
-                    <td>${comb.frequency}</td>
-                    <td>${comb.percentage}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 平衡性組合
-            html += '<h5 class="mt-4">平衡性組合</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼組合</th><th>出現次數</th><th>出現率</th></tr></thead><tbody>';
-            result.balanced_combinations.forEach(comb => {
-                html += `<tr>
-                    <td>${comb.combination}</td>
-                    <td>${comb.frequency}</td>
-                    <td>${comb.percentage}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 模式型組合
-            html += '<h5 class="mt-4">模式型組合</h5>';
-            html += '<div class="card mb-3"><div class="card-body">';
-            html += '<p><strong>模式說明：</strong></p>';
-            html += '<ul>';
-            html += '<li>S: 小號 (大樂透/威力彩 ≤ 25，今彩539 ≤ 20)</li>';
-            html += '<li>L: 大號 (大樂透/威力彩 > 25，今彩539 > 20)</li>';
-            html += '<li>O: 奇數</li>';
-            html += '<li>E: 偶數</li>';
-            html += '</ul>';
-            html += '</div></div>';
-
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>模式</th><th>出現次數</th><th>出現率</th><th>範例組合</th></tr></thead><tbody>';
-            result.pattern_combinations.forEach(comb => {
-                html += `<tr>
-                    <td><span title="例如：SO=小奇數, LE=大偶數">${comb.pattern}</span></td>
-                    <td>${comb.frequency}</td>
-                    <td>${comb.percentage}%</td>
-                    <td>${comb.example_combinations}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
+            document.getElementById('recommendationResult').style.display = 'block';
+            document.getElementById('recommendationResult').innerHTML = html;
         }
 
-        function displayAdvancedStatistics(result) {
-            let html = '<div class="mt-3">';
+        function getRecommendation() {
+            const lotteryType = document.getElementById('lotteryType').value;
+            const periods = document.getElementById('periods').value;
             
-            // 分析說明
-            html += '<div class="card mb-4"><div class="card-body">';
-            html += '<h5>分析方法說明</h5><ul>';
-            for (let key in result.analysis_description.descriptions) {
-                html += `<li><strong>${key}:</strong> ${result.analysis_description.descriptions[key]}</li>`;
-            }
-            html += '</ul></div></div>';
+            showLoading();
             
-            // 自相關性分析
-            html += `<h5>${result.analysis_description.autocorrelation}</h5>`;
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>平均間隔(天)</th><th>重複次數</th><th>標準差</th></tr></thead><tbody>';
-            result.autocorrelation.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.avg_interval}</td>
-                    <td>${item.repeat_count}</td>
-                    <td>${item.std_dev}</td>
-                </tr>`;
+            fetch('/recommend_from_hot_cold', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    lottery_type: lotteryType,
+                    periods: periods || null
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                hideLoading();
+                displayRecommendation(result);
+            })
+            .catch(error => {
+                hideLoading();
+                document.getElementById('recommendationResult').innerHTML = `
+                    <div class="alert alert-danger">推薦過程發生錯誤: ${error}</div>
+                `;
             });
-            html += '</tbody></table></div>';
-            
-            // 交叉關聯分析
-            html += `<h5 class="mt-4">${result.analysis_description.cross_correlation}</h5>`;
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼對</th><th>出現次數</th><th>出現率</th><th>相關分數</th></tr></thead><tbody>';
-            result.cross_correlation.forEach(item => {
-                html += `<tr>
-                    <td>${item.number_pair}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.percentage}%</td>
-                    <td>${item.correlation_score}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 馬可夫鏈分析
-            html += `<h5 class="mt-4">${result.analysis_description.markov_chain}</h5>`;
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>當前組合</th><th>下期組合</th><th>出現次數</th><th>轉移機率</th></tr></thead><tbody>';
-            result.markov_chain.forEach(item => {
-                html += `<tr>
-                    <td>${item.current_numbers}</td>
-                    <td>${item.next_numbers}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.transition_prob}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 貝氏機率分析
-            html += `<h5 class="mt-4">${result.analysis_description.bayes_probability}</h5>`;
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>先驗機率</th><th>條件機率</th><th>後驗機率</th></tr></thead><tbody>';
-            result.bayes_probability.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.prior_probability}%</td>
-                    <td>${item.conditional_probability}%</td>
-                    <td>${item.posterior_probability}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
-        }
-
-        function displayMissingValueAnalysis(result) {
-            let html = '<div class="mt-3">';
-            
-            // 分析說明
-            html += '<div class="card mb-4"><div class="card-body">';
-            html += '<h5>分析方法說明</h5><ul>';
-            for (let key in result.analysis_description) {
-                html += `<li><strong>${key}:</strong> ${result.analysis_description[key]}</li>`;
-            }
-            html += '</ul></div></div>';
-            
-            // 當前遺漏值分析
-            html += '<h5>當前遺漏值分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>最後出現期數</th><th>總出現次數</th><th>遺漏期數</th></tr></thead><tbody>';
-            result.current_missing.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.last_appearance}</td>
-                    <td>${item.total_appearances}</td>
-                    <td>${item.missing_draws}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 歷史遺漏值分析
-            html += '<h5 class="mt-4">歷史遺漏值分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>最大遺漏期數</th><th>平均遺漏期數</th></tr></thead><tbody>';
-            result.historical_missing.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.max_missing_periods}</td>
-                    <td>${item.avg_missing_periods}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 遺漏值模式分析
-            html += '<h5 class="mt-4">遺漏值模式分析</h5>';
-            html += '<div class="card mb-3"><div class="card-body">';
-            html += '<p><strong>模式說明：</strong></p>';
-            html += '<ul>';
-            html += '<li>L: 遺漏超過10期的號碼</li>';
-            html += '<li>N: 最近有開出的號碼</li>';
-            html += '</ul>';
-            html += '</div></div>';
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>模式</th><th>出現次數</th><th>出現率</th></tr></thead><tbody>';
-            result.missing_patterns.forEach(item => {
-                html += `<tr>
-                    <td>${item.pattern}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.percentage}%</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 遺漏值統計
-            html += '<h5 class="mt-4">遺漏值統計</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>出現次數</th><th>最大遺漏</th><th>平均遺漏</th><th>最小遺漏</th></tr></thead><tbody>';
-            result.missing_statistics.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.appearance_count}</td>
-                    <td>${item.max_missing_periods}</td>
-                    <td>${item.avg_missing_periods}</td>
-                    <td>${item.min_missing_periods}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
-        }
-
-        function displayNetworkAnalysis(result) {
-            let html = '<div class="mt-3">';
-            
-            // 分析說明
-            html += '<div class="card mb-4"><div class="card-body">';
-            html += '<h5>分析方法說明</h5><ul>';
-            for (let key in result.analysis_description) {
-                html += `<li><strong>${key}:</strong> ${result.analysis_description[key]}</li>`;
-            }
-            html += '</ul></div></div>';
-            
-            // 節點分析
-            html += '<h5>節點分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>出現頻率</th><th>出現率(%)</th><th>小號比例(%)</th><th>奇數比例(%)</th></tr></thead><tbody>';
-            result.nodes.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.occurrence_rate}</td>
-                    <td>${item.small_number_rate}</td>
-                    <td>${item.odd_number_rate}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 連結分析
-            html += '<h5 class="mt-4">連結分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼對</th><th>連結權重</th><th>關聯強度(%)</th></tr></thead><tbody>';
-            result.links.forEach(item => {
-                html += `<tr>
-                    <td>${item.source}-${item.target}</td>
-                    <td>${item.weight}</td>
-                    <td>${item.strength}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 中心性分析
-            html += '<h5 class="mt-4">中心性分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>度中心性</th><th>中介中心性</th><th>特徵向量中心性</th></tr></thead><tbody>';
-            result.centrality.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.degree_centrality}</td>
-                    <td>${item.betweenness_centrality}</td>
-                    <td>${item.eigenvector_centrality}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 社群分析
-            html += '<h5 class="mt-4">社群分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>社群號碼</th><th>出現次數</th><th>社群強度(%)</th></tr></thead><tbody>';
-            result.communities.forEach(item => {
-                html += `<tr>
-                    <td>${item.community_numbers}</td>
-                    <td>${item.community_size}</td>
-                    <td>${item.community_strength}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
-        }
-
-        function displayProbabilityAnalysis(result) {
-            let html = '<div class="mt-3">';
-            
-            // 分析說明
-            html += '<div class="card mb-4"><div class="card-body">';
-            html += '<h5>分析方法說明</h5><ul>';
-            for (let key in result.analysis_description) {
-                html += `<li><strong>${key}:</strong> ${result.analysis_description[key]}</li>`;
-            }
-            html += '</ul></div></div>';
-            
-            // 經驗分布分析
-            html += '<h5>經驗分布分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>出現頻率</th><th>經驗機率(%)</th><th>與均勻分布的偏差(%)</th></tr></thead><tbody>';
-            result.empirical_distribution.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.empirical_probability}</td>
-                    <td>${item.deviation_from_uniform}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 理論分布比較
-            html += '<h5 class="mt-4">理論分布比較</h5>';
-            html += '<div class="table-responsive"><table class="table table-striped">';
-            html += `<tr><th>每期平均號碼數</th><td>${result.theoretical_comparison.avg_numbers_per_draw}</td></tr>`;
-            html += `<tr><th>平均不重複號碼數</th><td>${result.theoretical_comparison.avg_unique_numbers}</td></tr>`;
-            html += `<tr><th>平均範圍大小</th><td>${result.theoretical_comparison.avg_range_size}</td></tr>`;
-            html += `<tr><th>高於平均值比例(%)</th><td>${result.theoretical_comparison.above_mean_percentage}</td></tr>`;
-            html += '</table></div>';
-            
-            // 聯合機率分布
-            html += '<h5 class="mt-4">聯合機率分布</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼對</th><th>聯合頻率</th><th>聯合機率(%)</th><th>依賴比率</th></tr></thead><tbody>';
-            result.joint_distribution.forEach(item => {
-                html += `<tr>
-                    <td>${item.number_pair}</td>
-                    <td>${item.joint_frequency}</td>
-                    <td>${item.joint_probability}</td>
-                    <td>${item.dependency_ratio}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // 條件機率分析
-            html += '<h5 class="mt-4">條件機率分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>出現頻率</th><th>邊際機率(%)</th><th>條件機率(%)</th><th>機率提升度(%)</th></tr></thead><tbody>';
-            result.conditional_probability.forEach(item => {
-                html += `<tr>
-                    <td>${item.number}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.marginal_probability}</td>
-                    <td>${item.conditional_probability}</td>
-                    <td>${item.probability_lift}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            return html + '</div>';
         }
 
         // 頁面載入時更新資料範圍
