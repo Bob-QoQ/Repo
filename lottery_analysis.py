@@ -2638,19 +2638,7 @@ class LotteryAnalysis:
         }
     
     def recommend_from_hot_cold(self, lottery_type='big_lotto', periods=None):
-        """基於冷熱門號碼分析的號碼推薦系統
-        
-        Args:
-            lottery_type (str): 樂透類型 ('big_lotto', 'super_lotto', 'daily_cash')
-            periods (int, optional): 要分析的期數，None 表示分析所有資料
-            
-        Returns:
-            dict: 包含以下推薦結果：
-            - balanced_numbers: 平衡型選號推薦
-            - aggressive_numbers: 進取型選號推薦
-            - conservative_numbers: 保守型選號推薦
-            - analysis_description: 推薦說明
-        """
+        """基於冷熱門號碼分析的號碼推薦系統"""
         conn = self._get_connection()
         
         # 設定期數過濾條件
@@ -2665,6 +2653,16 @@ class LotteryAnalysis:
             """
         else:
             period_filter = ""
+        
+        # 根據彩券類型設置參數
+        if lottery_type == 'daily_cash':
+            numbers_per_draw = 5  # 今彩539只需要5個號碼
+            max_hot_numbers = 3   # 熱門號碼數量
+            max_cold_numbers = 2  # 冷門號碼數量
+        else:
+            numbers_per_draw = 6  # 大樂透和威力彩需要6個號碼
+            max_hot_numbers = 4   # 熱門號碼數量
+            max_cold_numbers = 2  # 冷門號碼數量
         
         # 1. 綜合分析查詢
         query = f"""
@@ -2730,49 +2728,77 @@ class LotteryAnalysis:
         
         # 修改推薦組合生成部分
         recommendations = {
-            'balanced': [],    # 平衡型：3熱門 + 3冷門
-            'aggressive': [],  # 進取型：4熱門 + 2冷門
-            'conservative': [] # 保守型：2熱門 + 4冷門
+            'balanced': [],    # 平衡型
+            'aggressive': [],  # 進取型
+            'conservative': [] # 保守型
         }
         
-        # 每種類型產生5組
-        for _ in range(5):
-            # 平衡型選號（3熱門 + 3冷門）
-            balanced = (
-                random.sample(hot_numbers[:10], 3) + 
-                random.sample(cold_numbers[:10], 3)
-            )
-            balanced.sort()
-            recommendations['balanced'].append(balanced)
-            
-            # 進取型選號（4熱門 + 2冷門）
-            aggressive = (
-                random.sample(hot_numbers[:8], 4) + 
-                random.sample(cold_numbers[:8], 2)
-            )
-            aggressive.sort()
-            recommendations['aggressive'].append(aggressive)
-            
-            # 保守型選號（2熱門 + 4冷門）
-            conservative = (
-                random.sample(hot_numbers[:8], 2) + 
-                random.sample(cold_numbers[:8], 4)
-            )
-            conservative.sort()
-            recommendations['conservative'].append(conservative)
+        # 根據彩券類型調整推薦組合
+        if lottery_type == 'daily_cash':
+            # 今彩539的推薦組合
+            for _ in range(5):
+                # 平衡型選號（3熱門 + 2冷門）
+                balanced = (
+                    random.sample(hot_numbers[:8], 3) + 
+                    random.sample(cold_numbers[:8], 2)
+                )
+                balanced.sort()
+                recommendations['balanced'].append(balanced)
+                
+                # 進取型選號（4熱門 + 1冷門）
+                aggressive = (
+                    random.sample(hot_numbers[:8], 4) + 
+                    random.sample(cold_numbers[:8], 1)
+                )
+                aggressive.sort()
+                recommendations['aggressive'].append(aggressive)
+                
+                # 保守型選號（2熱門 + 3冷門）
+                conservative = (
+                    random.sample(hot_numbers[:8], 2) + 
+                    random.sample(cold_numbers[:8], 3)
+                )
+                conservative.sort()
+                recommendations['conservative'].append(conservative)
+        else:
+            # 大樂透和威力彩的推薦組合
+            for _ in range(5):
+                # 平衡型選號（3熱門 + 3冷門）
+                balanced = (
+                    random.sample(hot_numbers[:10], 3) + 
+                    random.sample(cold_numbers[:10], 3)
+                )
+                balanced.sort()
+                recommendations['balanced'].append(balanced)
+                
+                # 進取型選號（4熱門 + 2冷門）
+                aggressive = (
+                    random.sample(hot_numbers[:8], 4) + 
+                    random.sample(cold_numbers[:8], 2)
+                )
+                aggressive.sort()
+                recommendations['aggressive'].append(aggressive)
+                
+                # 保守型選號（2熱門 + 4冷門）
+                conservative = (
+                    random.sample(hot_numbers[:8], 2) + 
+                    random.sample(cold_numbers[:8], 4)
+                )
+                conservative.sort()
+                recommendations['conservative'].append(conservative)
         
-        # 分析說明
+        # 3. 產生分析摘要
         analysis_description = {
             '選號策略': '''根據號碼的冷熱分析進行推薦。
             
             熱門號碼：近期開出頻率高的號碼
             冷門號碼：近期開出頻率低或遺漏期數多的號碼''',
             
-            '推薦組合': '''提供三種不同風格的選號組合：
+            '推薦組合': f'''提供三種不同風格的選號組合：
             
-            平衡型：3熱門 + 3冷門，適合一般玩家
-            進取型：4熱門 + 2冷門，追求高命中率
-            保守型：2熱門 + 4冷門，期待遺漏值回補''',
+            平衡型：{3 if lottery_type == "daily_cash" else 3}熱門 + {2 if lottery_type == "daily_cash" else 3}冷門，適合一般玩家
+            進取型：{4 if lottery_type == "daily_cash" else 4}熱門 + {1 if lottery_type == "daily_cash" else 2}冷門，追求高命中率
+            保守型：{2 if lottery_type == "daily_cash" else 2}熱門 + {3 if lottery_type == "daily_cash" else 4}冷門，期待遺漏值回補''',
             
             '使用建議': '''建議根據個人風格選擇合適的組合類型。
             

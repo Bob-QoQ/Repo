@@ -23,48 +23,113 @@
     <div class="container mt-5">
         <h1 class="text-center mb-4">樂透分析系統</h1>
         
-        <div class="row">
-            <div class="col-md-4">
-                <div class="form-group mb-3">
-                    <label for="lotteryType">樂透類型</label>
-                    <select class="form-control" id="lotteryType">
-                        <option value="big_lotto">大樂透</option>
-                        <option value="super_lotto">威力彩</option>
-                        <option value="daily_cash">今彩539</option>
-                    </select>
+        <!-- 快速選號推薦區域 -->
+        <div class="card mb-4" id="recommendSection">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">快速選號推薦</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="recommendLotteryType" class="form-label">選擇樂透類型</label>
+                            <select class="form-control" id="recommendLotteryType">
+                                <option value="big_lotto">大樂透</option>
+                                <option value="super_lotto">威力彩</option>
+                                <option value="daily_cash">今彩539</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="recommendPeriods" class="form-label">分析期數</label>
+                            <input type="number" class="form-control" id="recommendPeriods" 
+                                   placeholder="留空分析所有資料">
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="getRecommendation()">立即推薦</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-danger">熱門</span>
+                            <span class="badge bg-primary">冷門</span>
+                            <span class="badge bg-info">平衡</span>
+                            <span class="text-muted ms-2">
+                                根據歷史數據分析，為您推薦最佳選號組合
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="col-md-4">
-                <div class="form-group mb-3">
-                    <label for="analysisType">分析類型</label>
-                    <select class="form-control" id="analysisType">
-                        <option value="basic">基本統計</option>
-                        <option value="interval">區間分析</option>
-                        <option value="continuity">連續性分析</option>
-                        <option value="time_series">時間序列分析</option>
-                        <option value="prediction">預測分析</option>
-                        <option value="recommend">推薦號碼</option>
-                        <option value="combination">組合模式分析</option>
-                        <option value="combination_prediction">號碼組合預測</option>
-                        <option value="advanced_statistics">進階統計分析</option>
-                        <option value="missing_value">遺漏值分析</option>
-                        <option value="network">號碼關聯網絡分析</option>
-                        <option value="probability">機率分布分析</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="form-group mb-3">
-                    <label for="periods">分析期數 (可選)</label>
-                    <input type="number" class="form-control" id="periods" placeholder="留空分析所有資料">
-                </div>
-            </div>
+            <!-- 推薦結果將顯示在這裡 -->
+            <div id="recommendationResult" style="display: none;"></div>
         </div>
         
-        <div class="text-center mb-4">
-            <button class="btn btn-primary" onclick="analyze()">開始分析</button>
+        <!-- 新增：詳細分析區域 -->
+        <div class="card mb-4" id="analysisSection">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">詳細數據分析</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="lotteryType">樂透類型</label>
+                            <select class="form-control" id="lotteryType">
+                                <option value="big_lotto">大樂透</option>
+                                <option value="super_lotto">威力彩</option>
+                                <option value="daily_cash">今彩539</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="analysisType">分析類型</label>
+                            <select class="form-control" id="analysisType">
+                                <option value="basic">基本統計</option>
+                                <option value="interval">區間分析</option>
+                                <option value="continuity">連續性分析</option>
+                                <option value="time_series">時間序列分析</option>
+                                <option value="prediction">預測分析</option>
+                                <option value="combination">組合模式分析</option>
+                                <option value="combination_prediction">號碼組合預測</option>
+                                <option value="advanced_statistics">進階統計分析</option>
+                                <option value="missing_value">遺漏值分析</option>
+                                <option value="network">號碼關聯網絡分析</option>
+                                <option value="probability">機率分布分析</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="periods">分析期數 (可選)</label>
+                            <input type="number" class="form-control" id="periods" placeholder="留空分析所有資料">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-info">統計</span>
+                            <span class="badge bg-warning">預測</span>
+                            <span class="badge bg-secondary">分析</span>
+                            <span class="text-muted ms-2">
+                                提供多維度的數據分析，協助您更好地理解開獎趨勢
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <button class="btn btn-success" onclick="analyze()">開始分析</button>
+                </div>
+            </div>
         </div>
 
         <div id="loading" class="loading">
@@ -76,12 +141,6 @@
         
         <div id="dataRange" class="result-section"></div>
         <div id="result" class="result-section"></div>
-
-        <!-- 在基本統計分析結果下方添加推薦按鈕 -->
-        <button class="btn btn-success mt-3" onclick="getRecommendation()">獲取選號推薦</button>
-
-        <!-- 添加推薦結果顯示區域 -->
-        <div id="recommendationResult" class="mt-3" style="display: none;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -601,8 +660,8 @@
         }
 
         function getRecommendation() {
-            const lotteryType = document.getElementById('lotteryType').value;
-            const periods = document.getElementById('periods').value;
+            const lotteryType = document.getElementById('recommendLotteryType').value;
+            const periods = document.getElementById('recommendPeriods').value;
             
             showLoading();
             

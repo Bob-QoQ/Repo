@@ -40,7 +40,7 @@ def create_tables(conn):
     )
     ''')
     
-    # 建立今彩539資料表
+    # 修改今彩539資料表结构
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS daily_cash (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,11 +96,11 @@ def import_data():
                 item.get('price', None)  # 修改這裡
             ))
     
-    # 匯入今彩539資料
+    # 修改今彩539資料导入逻辑
     with open('Lotto-Crawler/data/DailyCash.json', 'r', encoding='utf-8') as f:
         daily_cash_data = json.load(f)
-        for item in daily_cash_data.values():  # 修改這裡
-            nums = item['draw_order_nums']
+        for item in daily_cash_data.values():
+            nums = item['draw_order_nums'][:5]  # 只取前5个号码
             cursor.execute('''
             INSERT INTO daily_cash (draw_term, draw_date, num1, num2, num3, num4, num5, total_sales)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -108,7 +108,7 @@ def import_data():
                 item['draw'],
                 item['date'],
                 nums[0], nums[1], nums[2], nums[3], nums[4],
-                item.get('price', None)  # 修改這裡
+                item.get('price', None)
             ))
     
     conn.commit()
