@@ -5,6 +5,10 @@ import sqlite3
 app = Flask(__name__)
 analysis = LotteryAnalysis()
 
+def get_db_connection():
+    """獲取資料庫連接"""
+    return sqlite3.connect('lottery.db')
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -57,51 +61,57 @@ def analyze():
         return jsonify({'error': str(e)})
 
 @app.route('/data_range')
-def data_range():
-    lottery_type = request.args.get('lottery_type', 'big_lotto')
-    conn = sqlite3.connect('lottery.db')
-    cursor = conn.cursor()
+def get_data_range():
+    """獲取所有樂透類型的資料範圍"""
+    lottery_types = ['big_lotto', 'super_lotto', 'daily_cash']
+    lottery_names = {
+        'big_lotto': '大樂透',
+        'super_lotto': '威力彩',
+        'daily_cash': '今彩539'
+    }
     
-    query = f"""
-        SELECT 
-            MIN(draw_date) as start_date,
-            MAX(draw_date) as end_date,
-            COUNT(*) as total_draws,
-            MAX(draw_term) as latest_term
-        FROM {lottery_type}
-    """
+    ranges = {}
+    for lottery_type in lottery_types:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 獲取每種樂透的資料範圍
+        cursor.execute(f"""
+            SELECT 
+                MIN(draw_date) as start_date,
+                MAX(draw_date) as end_date,
+                MAX(draw_term) as latest_term,
+                COUNT(DISTINCT draw_term) as total_draws
+            FROM {lottery_type}
+        """)
+        result = cursor.fetchone()
+        
+        ranges[lottery_type] = {
+            'name': lottery_names[lottery_type],
+            'start_date': result[0],
+            'end_date': result[1],
+            'latest_term': result[2],
+            'total_draws': result[3]
+        }
+        
+        conn.close()
     
-    cursor.execute(query)
-    start_date, end_date, total_draws, latest_term = cursor.fetchone()
-    
-    conn.close()
-    
-    return jsonify({
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_draws': total_draws,
-        'latest_term': latest_term
-    })
+    return jsonify(ranges)
 
 @app.route('/recommend', methods=['POST'])
 def recommend():
-    data = request.get_json()
-    lottery_type = data.get('lottery_type', 'big_lotto')
-    periods = data.get('periods')
-    
-    if periods:
-        try:
-            periods = int(periods)
-            if periods <= 0:
-                return jsonify({'error': '期數必須大於 0'})
-        except ValueError:
-            return jsonify({'error': '請輸入有效的期數'})
-    
     try:
-        result = analysis.recommend_numbers(lottery_type, periods)
+        data = request.get_json()
+        lottery_type = data.get('lottery_type', 'big_lotto')
+        periods = data.get('periods')
+        method = data.get('method', 'hot_cold')
+        
+        analyzer = LotteryAnalysis()
+        result = analyzer.recommend_by_method(lottery_type, method, periods)
+        
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/recommend_from_hot_cold', methods=['POST'])
 def recommend_from_hot_cold():

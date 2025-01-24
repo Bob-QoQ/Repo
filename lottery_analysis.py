@@ -2803,9 +2803,20 @@ class LotteryAnalysis:
             '使用建議': '''建議根據個人風格選擇合適的組合類型。
             
             參考依據：
-            - 可以參考號碼的推薦分數
-            - 可以參考號碼的歷史表現
-            - 可以參考號碼的遺漏情況
+            <strong style="color: #dc3545">【推薦分數】</strong>
+            - 綜合考慮號碼的熱冷程度和遺漏值計算出的綜合評分
+            - 分數越高表示越推薦選擇
+            - 計算公式：命中率 × 40% + 遺漏值權重 × 60%
+            
+            <strong style="color: #0d6efd">【歷史表現】</strong>
+            - 頻率：分析期間內出現次數
+            - 命中率：出現次數占總期數的百分比
+            - 最後開出：最近一次開出的期數
+            
+            <strong style="color: #198754">【遺漏情況】</strong>
+            - 遺漏期數：該號碼已經多少期沒出現
+            - 越久沒開出的號碼，遺漏期數越大
+            - 可用來判斷號碼是否"該出現了"
             
             溫馨提醒：
             記得理性購買，適度娛樂。'''
@@ -2818,5 +2829,748 @@ class LotteryAnalysis:
             'aggressive_numbers': recommendations['aggressive'],
             'conservative_numbers': recommendations['conservative'],
             'number_analysis': df.to_dict('records'),
+            'analysis_description': analysis_description
+        }
+    
+    def recommend_by_method(self, lottery_type='big_lotto', method='hot_cold', periods=None):
+        """根據不同方法進行號碼推薦"""
+        try:
+            if method == 'hot_cold':
+                return self.recommend_from_hot_cold(lottery_type, periods)
+            elif method == 'interval':
+                return self.recommend_from_interval(lottery_type, periods)
+            elif method == 'odd_even':
+                return self.recommend_from_odd_even(lottery_type, periods)
+            elif method == 'sequence':
+                return self.recommend_from_sequence(lottery_type, periods)
+            elif method == 'cycle':
+                return self.recommend_from_cycle(lottery_type, periods)
+            else:
+                raise ValueError(f"不支援的推薦方法: {method}")
+        except Exception as e:
+            print(f"推薦過程發生錯誤: {str(e)}")
+            raise
+    
+    def recommend_from_interval(self, lottery_type='big_lotto', periods=None):
+        """區間平衡法推薦"""
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 設定彩種參數
+        if lottery_type == 'daily_cash':
+            max_number = 39
+            numbers_per_draw = 5
+            interval_count = 5  # 分成5個區間
+        else:
+            max_number = 49
+            numbers_per_draw = 6
+            interval_count = 6  # 分成6個區間
+        
+        # 計算每個區間的範圍
+        interval_size = max_number // interval_count
+        intervals = [(i * interval_size + 1, (i + 1) * interval_size) for i in range(interval_count)]
+        if max_number % interval_count != 0:
+            intervals[-1] = (intervals[-1][0], max_number)
+        
+        # 分析每個區間的號碼分布
+        query = f"""
+        WITH NumberAnalysis AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                MAX(draw_term) as last_appearance,
+                (
+                    SELECT COUNT(DISTINCT draw_term)
+                    FROM {lottery_type}
+                    WHERE draw_term > MAX(t1.draw_term)
+                    {period_filter}
+                ) as missing_draws,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as hit_rate,
+                CASE 
+                    WHEN value <= {interval_size} THEN 'I1'
+                    WHEN value <= {interval_size * 2} THEN 'I2'
+                    WHEN value <= {interval_size * 3} THEN 'I3'
+                    WHEN value <= {interval_size * 4} THEN 'I4'
+                    WHEN value <= {interval_size * 5} THEN 'I5'
+                    ELSE 'I6'
+                END as number_type
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            frequency,
+            last_appearance,
+            missing_draws,
+            ROUND(hit_rate, 2) as hit_rate,
+            number_type,
+            ROUND(
+                (hit_rate * 0.4) + 
+                (CASE WHEN missing_draws > 0 
+                    THEN (1.0 / missing_draws) * 100 
+                    ELSE 100 
+                END * 0.6),
+                2
+            ) as recommendation_score
+        FROM NumberAnalysis
+        ORDER BY frequency DESC
+        """
+        
+        df = pd.read_sql_query(query, conn)
+        
+        # 生成推薦組合
+        recommendations = {
+            'balanced': [],    # 平衡型：每個區間選1個
+            'aggressive': [],  # 進取型：高頻區間多選
+            'conservative': [] # 保守型：低頻區間多選
+        }
+        
+        for _ in range(5):  # 生成5組推薦
+            # 平衡型
+            balanced = []
+            for start, end in intervals:
+                interval_numbers = df[
+                    (df['number'] >= start) & 
+                    (df['number'] <= end)
+                ]['number'].tolist()
+                if interval_numbers:
+                    balanced.append(random.choice(interval_numbers))
+            
+            # 如果號碼不足，從其他區間補充
+            while len(balanced) < numbers_per_draw:
+                num = random.randint(1, max_number)
+                if num not in balanced:
+                    balanced.append(num)
+            
+            balanced.sort()
+            recommendations['balanced'].append(balanced[:numbers_per_draw])
+            
+            # 進取型：偏好高頻率區間
+            aggressive = []
+            high_freq_intervals = sorted(intervals, 
+                key=lambda x: df[
+                    (df['number'] >= x[0]) & 
+                    (df['number'] <= x[1])
+                ]['frequency'].mean(), 
+                reverse=True
+            )
+            
+            for start, end in high_freq_intervals[:numbers_per_draw]:
+                interval_numbers = df[
+                    (df['number'] >= start) & 
+                    (df['number'] <= end)
+                ]['number'].tolist()
+                if interval_numbers:
+                    aggressive.append(random.choice(interval_numbers))
+            
+            # 補充不足的號碼
+            while len(aggressive) < numbers_per_draw:
+                num = random.randint(1, max_number)
+                if num not in aggressive:
+                    aggressive.append(num)
+            
+            aggressive.sort()
+            recommendations['aggressive'].append(aggressive)
+            
+            # 保守型：偏好低頻率區間
+            conservative = []
+            low_freq_intervals = sorted(intervals, 
+                key=lambda x: df[
+                    (df['number'] >= x[0]) & 
+                    (df['number'] <= x[1])
+                ]['frequency'].mean()
+            )
+            
+            for start, end in low_freq_intervals[:numbers_per_draw]:
+                interval_numbers = df[
+                    (df['number'] >= start) & 
+                    (df['number'] <= end)
+                ]['number'].tolist()
+                if interval_numbers:
+                    conservative.append(random.choice(interval_numbers))
+            
+            # 補充不足的號碼
+            while len(conservative) < numbers_per_draw:
+                num = random.randint(1, max_number)
+                if num not in conservative:
+                    conservative.append(num)
+            
+            conservative.sort()
+            recommendations['conservative'].append(conservative)
+        
+        # 生成分析說明
+        analysis_description = {
+            '選號策略': '''根據號碼區間分布進行推薦。
+            
+            將號碼範圍分成幾個區間，分析每個區間的開出機率''',
+            
+            '推薦組合': f'''提供三種不同風格的選號組合：
+            
+            平衡型：每個區間平均選擇，追求均衡
+            進取型：偏好高頻率區間，追求熱門
+            保守型：偏好低頻率區間，期待遺漏回補''',
+            
+            '使用建議': '''建議根據個人風格選擇合適的組合類型。
+            
+            參考依據：
+            <strong style="color: #dc3545">【區間分布】</strong>
+            - 頻率分布：每個區間的號碼開出頻率
+            - 區間比例：各區間號碼的占比情況
+            - 區間範圍：號碼所在的區間位置
+            
+            <strong style="color: #0d6efd">【開出規律】</strong>
+            - 熱門區間：開出頻率較高的號碼區間
+            - 冷門區間：開出頻率較低的號碼區間
+            - 區間組合：不同區間的搭配模式
+            
+            <strong style="color: #198754">【選號建議】</strong>
+            - 平衡型：建議每個區間都選擇號碼
+            - 進取型：可以偏重熱門區間的號碼
+            - 保守型：可以關注冷門區間的號碼
+            
+            溫馨提醒：
+            記得理性購買，適度娛樂。'''
+        }
+        
+        conn.close()
+        
+        return {
+            'balanced_numbers': recommendations['balanced'],
+            'aggressive_numbers': recommendations['aggressive'],
+            'conservative_numbers': recommendations['conservative'],
+            'number_analysis': df.to_dict('records'),
+            'analysis_description': analysis_description
+        }
+    
+    def recommend_from_odd_even(self, lottery_type='big_lotto', periods=None):
+        """奇偶均衡法推薦"""
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 設定彩種參數
+        if lottery_type == 'daily_cash':
+            max_number = 39
+            numbers_per_draw = 5
+        else:
+            max_number = 49
+            numbers_per_draw = 6
+        
+        # 分析號碼分布和奇偶比例
+        query = f"""
+        WITH NumberAnalysis AS (
+            SELECT 
+                value as number,
+                COUNT(*) as frequency,
+                MAX(draw_term) as last_appearance,
+                (
+                    SELECT COUNT(DISTINCT draw_term)
+                    FROM {lottery_type}
+                    WHERE draw_term > MAX(t1.draw_term)
+                    {period_filter}
+                ) as missing_draws,
+                COUNT(*) * 100.0 / (
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) as hit_rate,
+                CASE 
+                    WHEN value % 2 = 0 THEN 'E'  -- Even (偶數)
+                    ELSE 'O'                      -- Odd (奇數)
+                END as number_type
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+            GROUP BY value
+        )
+        SELECT 
+            number,
+            frequency,
+            last_appearance,
+            missing_draws,
+            ROUND(hit_rate, 2) as hit_rate,
+            number_type,
+            ROUND(
+                (hit_rate * 0.4) + 
+                (CASE WHEN missing_draws > 0 
+                    THEN (1.0 / missing_draws) * 100 
+                    ELSE 100 
+                END * 0.6),
+                2
+            ) as recommendation_score
+        FROM NumberAnalysis
+        ORDER BY recommendation_score DESC
+        """
+        
+        df = pd.read_sql_query(query, conn)
+        
+        # 計算最佳奇偶比例
+        odd_numbers = df[df['number_type'] == 'O']['number'].tolist()
+        even_numbers = df[df['number_type'] == 'E']['number'].tolist()
+        
+        # 生成推薦組合
+        recommendations = {
+            'balanced': [],    # 平衡型：奇偶數量相近
+            'aggressive': [],  # 進取型：偏好高頻率的奇偶組合
+            'conservative': [] # 保守型：偏好低頻率的奇偶組合
+        }
+        
+        for _ in range(5):  # 生成5組推薦
+            # 平衡型
+            odd_count = numbers_per_draw // 2
+            even_count = numbers_per_draw - odd_count
+            
+            balanced = (
+                random.sample(sorted(odd_numbers, key=lambda x: df[df['number'] == x]['recommendation_score'].iloc[0], reverse=True)[:10], odd_count) +
+                random.sample(sorted(even_numbers, key=lambda x: df[df['number'] == x]['recommendation_score'].iloc[0], reverse=True)[:10], even_count)
+            )
+            balanced.sort()
+            recommendations['balanced'].append(balanced)
+            
+            # 進取型：偏好高推薦分數的號碼
+            aggressive_odd = sorted(odd_numbers, key=lambda x: df[df['number'] == x]['recommendation_score'].iloc[0], reverse=True)[:8]
+            aggressive_even = sorted(even_numbers, key=lambda x: df[df['number'] == x]['recommendation_score'].iloc[0], reverse=True)[:8]
+            
+            aggressive = (
+                random.sample(aggressive_odd, odd_count) +
+                random.sample(aggressive_even, even_count)
+            )
+            aggressive.sort()
+            recommendations['aggressive'].append(aggressive)
+            
+            # 保守型：偏好低頻率號碼
+            conservative_odd = sorted(odd_numbers, key=lambda x: df[df['number'] == x]['frequency'].iloc[0])[:8]
+            conservative_even = sorted(even_numbers, key=lambda x: df[df['number'] == x]['frequency'].iloc[0])[:8]
+            
+            conservative = (
+                random.sample(conservative_odd, odd_count) +
+                random.sample(conservative_even, even_count)
+            )
+            conservative.sort()
+            recommendations['conservative'].append(conservative)
+        
+        # 生成分析說明
+        analysis_description = {
+            '選號策略': '''根據號碼的奇偶屬性進行分析和推薦。
+            
+            分析歷史開獎的奇偶比例，結合號碼的熱門程度''',
+            
+            '推薦組合': f'''提供三種不同風格的選號組合：
+            
+            平衡型：維持最佳奇偶比例，追求均衡
+            進取型：選擇高推薦分數的奇偶組合
+            保守型：選擇低頻率的奇偶組合''',
+            
+            '使用建議': '''建議根據個人風格選擇合適的組合類型。
+            
+            參考依據：
+            <strong style="color: #dc3545">【奇偶比例】</strong>
+            - 奇數比例：奇數號碼的開出比例
+            - 偶數比例：偶數號碼的開出比例
+            - 最佳配比：歷史數據中表現最好的奇偶比例
+            
+            <strong style="color: #0d6efd">【號碼表現】</strong>
+            - 熱門號碼：開出頻率較高的奇/偶數
+            - 冷門號碼：開出頻率較低的奇/偶數
+            - 推薦分數：綜合評分較高的奇偶組合
+            
+            <strong style="color: #198754">【選號策略】</strong>
+            - 平衡型：維持穩定的奇偶比例
+            - 進取型：選擇高頻率的奇偶組合
+            - 保守型：關注低頻率的奇偶組合
+            
+            溫馨提醒：
+            記得理性購買，適度娛樂。'''
+        }
+        
+        conn.close()
+        
+        return {
+            'balanced_numbers': recommendations['balanced'],
+            'aggressive_numbers': recommendations['aggressive'],
+            'conservative_numbers': recommendations['conservative'],
+            'number_analysis': df.to_dict('records'),
+            'analysis_description': analysis_description
+        }
+    
+    def recommend_from_sequence(self, lottery_type='big_lotto', periods=None):
+        """連號分析法推薦"""
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 設定彩種參數
+        if lottery_type == 'daily_cash':
+            max_number = 39
+            numbers_per_draw = 5
+        else:
+            max_number = 49
+            numbers_per_draw = 6
+        
+        # 分析連號模式
+        query = f"""
+        WITH DrawSequences AS (
+            SELECT 
+                t1.draw_term,
+                t1.draw_date,
+                value as number,
+                CASE 
+                    WHEN value + 1 IN (
+                        SELECT value 
+                        FROM {lottery_type} t2,
+                        json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+                        WHERE t2.draw_term = t1.draw_term
+                    ) THEN 1
+                    ELSE 0
+                END as has_sequence,
+                COUNT(*) OVER (PARTITION BY value) as frequency,
+                MAX(t1.draw_term) OVER (PARTITION BY value) as last_appearance,
+                COUNT(*) OVER (PARTITION BY value) * 100.0 / COUNT(*) OVER () as hit_rate
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        )
+        SELECT 
+            draw_term,
+            draw_date,
+            GROUP_CONCAT(number) as numbers,
+            GROUP_CONCAT(has_sequence) as sequence_flags,
+            SUM(has_sequence) as sequence_count,
+            number,
+            frequency,
+            last_appearance,
+            ROUND(hit_rate, 2) as hit_rate
+        FROM DrawSequences
+        GROUP BY draw_term, draw_date
+        ORDER BY draw_term DESC
+        """
+        
+        df = pd.read_sql_query(query, conn)
+        
+        # 計算每個號碼的連號出現次數
+        number_stats = {}
+        for _, row in df.iterrows():
+            numbers = [int(n) for n in row['numbers'].split(',')]
+            sequence_flags = [int(f) for f in row['sequence_flags'].split(',')]
+            for num, flag in zip(numbers, sequence_flags):
+                if num not in number_stats:
+                    number_stats[num] = {'sequence_count': 0, 'total_count': 0}
+                number_stats[num]['sequence_count'] += flag
+                number_stats[num]['total_count'] += 1
+        
+        # 分類號碼
+        sequence_numbers = [num for num, stats in number_stats.items() 
+                           if stats['sequence_count'] / stats['total_count'] > 0.3]
+        non_sequence_numbers = [num for num in range(1, max_number + 1) 
+                              if num not in sequence_numbers]
+        
+        # 生成推薦組合
+        recommendations = {
+            'balanced': [],    # 平衡型：連號與非連號平衡
+            'aggressive': [],  # 進取型：偏好連號
+            'conservative': [] # 保守型：避免連號
+        }
+        
+        for _ in range(5):
+            # 平衡型：2個連號 + 其他非連號
+            balanced = []
+            if len(sequence_numbers) >= 2:
+                balanced.extend(random.sample(sequence_numbers, 2))
+            balanced.extend(random.sample(non_sequence_numbers, numbers_per_draw - len(balanced)))
+            balanced.sort()
+            recommendations['balanced'].append(balanced)
+            
+            # 進取型：偏好連號
+            aggressive = []
+            seq_count = min(4, len(sequence_numbers))
+            if seq_count > 0:
+                aggressive.extend(random.sample(sequence_numbers, seq_count))
+            aggressive.extend(random.sample(non_sequence_numbers, numbers_per_draw - len(aggressive)))
+            aggressive.sort()
+            recommendations['aggressive'].append(aggressive)
+            
+            # 保守型：避免連號
+            conservative = random.sample(non_sequence_numbers, numbers_per_draw)
+            conservative.sort()
+            recommendations['conservative'].append(conservative)
+        
+        # 生成分析說明
+        analysis_description = {
+            '選號策略': '''根據號碼的連號特性進行分析和推薦。
+            
+            分析歷史開獎的連號模式，評估連號出現的機率''',
+            
+            '推薦組合': f'''提供三種不同風格的選號組合：
+            
+            平衡型：適量連號，追求均衡
+            進取型：偏好連號組合，追求熱門
+            保守型：避免連號，期待分散''',
+            
+            '使用建議': '''建議根據個人風格選擇合適的組合類型。
+            
+            參考依據：
+            <strong style="color: #dc3545">【連號特性】</strong>
+            - 連號頻率：每期開出連號的機率
+            - 連號數量：每期平均出現的連號組數
+            - 連號位置：連號最常出現的位置
+            
+            <strong style="color: #0d6efd">【開出規律】</strong>
+            - 連號組合：常見的連號組合模式
+            - 連號間隔：連號之間的間隔規律
+            - 連號趨勢：近期連號出現的趨勢
+            
+            <strong style="color: #198754">【選號建議】</strong>
+            - 平衡型：適量選擇連號組合
+            - 進取型：根據趨勢選擇連號
+            - 保守型：避免過多連號
+            
+            溫馨提醒：
+            記得理性購買，適度娛樂。'''
+        }
+        
+        conn.close()
+        
+        # 準備分析結果
+        draw_analysis = []
+        for _, row in df.iterrows():
+            draw_analysis.append({
+                'draw_term': row['draw_term'],
+                'draw_date': row['draw_date'],
+                'numbers': row['numbers'],
+                'sequence_count': row['sequence_count']
+            })
+        
+        return {
+            'balanced_numbers': recommendations['balanced'],
+            'aggressive_numbers': recommendations['aggressive'],
+            'conservative_numbers': recommendations['conservative'],
+            'draw_analysis': draw_analysis,  # 改為回傳每期的分析結果
+            'analysis_description': analysis_description
+        }
+    
+    def recommend_from_cycle(self, lottery_type='big_lotto', periods=None):
+        """週期回歸法推薦"""
+        conn = self._get_connection()
+        
+        # 設定期數過濾條件
+        if periods:
+            period_filter = f"""
+            AND draw_term IN (
+                SELECT draw_term 
+                FROM {lottery_type} 
+                ORDER BY draw_term DESC 
+                LIMIT {periods}
+            )
+            """
+        else:
+            period_filter = ""
+        
+        # 設定彩種參數
+        if lottery_type == 'daily_cash':
+            max_number = 39
+            numbers_per_draw = 5
+        else:
+            max_number = 49
+            numbers_per_draw = 6
+        
+        # 分析週期模式
+        query = f"""
+        WITH DrawHistory AS (
+            SELECT 
+                draw_term,
+                draw_date,
+                value as number
+            FROM {lottery_type} t1,
+            json_each(json_array(num1, num2, num3, num4, num5{', num6' if lottery_type != 'daily_cash' else ''}))
+            WHERE 1=1 {period_filter}
+        ),
+        NumberStats AS (
+            SELECT 
+                number,
+                COUNT(*) as frequency,
+                MAX(draw_term) as last_appearance,
+                -- 計算平均週期：總期數除以出現次數
+                ROUND(CAST((
+                    SELECT COUNT(DISTINCT draw_term) 
+                    FROM {lottery_type}
+                    WHERE 1=1 {period_filter}
+                ) AS FLOAT) / COUNT(*), 1) as avg_cycle
+            FROM DrawHistory
+            GROUP BY number
+        ),
+        NumberCycles AS (
+            SELECT 
+                t1.number,
+                MIN(t2.draw_term - t1.draw_term) as min_cycle,
+                MAX(t2.draw_term - t1.draw_term) as max_cycle
+            FROM DrawHistory t1
+            JOIN DrawHistory t2 ON t1.number = t2.number AND t2.draw_term > t1.draw_term
+            GROUP BY t1.number
+        ),
+        MissingDraws AS (
+            SELECT 
+                ns.*,
+                (
+                    SELECT COUNT(DISTINCT draw_term)
+                    FROM {lottery_type}
+                    WHERE draw_term > ns.last_appearance
+                    {period_filter}
+                ) as missing_draws
+            FROM NumberStats ns
+        )
+        SELECT 
+            md.number,
+            md.avg_cycle,
+            COALESCE(nc.min_cycle, 0) as min_cycle,
+            COALESCE(nc.max_cycle, 0) as max_cycle,
+            md.frequency,
+            md.last_appearance,
+            md.missing_draws,
+            CASE 
+                WHEN md.missing_draws >= ROUND(md.avg_cycle) THEN 'C1'  -- 已達週期
+                WHEN md.missing_draws >= ROUND(md.avg_cycle * 0.7) THEN 'C2'  -- 接近週期
+                ELSE 'C3'  -- 未達週期
+            END as cycle_status
+        FROM MissingDraws md
+        LEFT JOIN NumberCycles nc ON md.number = nc.number
+        ORDER BY 
+            CASE cycle_status
+                WHEN 'C1' THEN 1
+                WHEN 'C2' THEN 2
+                ELSE 3
+            END,
+            missing_draws DESC
+        """
+        
+        df = pd.read_sql_query(query, conn)
+        
+        # 根據週期狀態分類號碼
+        cycle_complete = df[df['cycle_status'] == 'C1']['number'].tolist()
+        cycle_approaching = df[df['cycle_status'] == 'C2']['number'].tolist()
+        cycle_ongoing = df[df['cycle_status'] == 'C3']['number'].tolist()
+        
+        # 生成推薦組合
+        recommendations = {
+            'balanced': [],    # 平衡型：混合不同週期狀態
+            'aggressive': [],  # 進取型：偏好已達週期的號碼
+            'conservative': [] # 保守型：偏好未達週期的號碼
+        }
+        
+        for _ in range(5):  # 生成5組推薦
+            # 平衡型：各週期狀態平均選擇
+            balanced = []
+            if cycle_complete:
+                balanced.extend(random.sample(cycle_complete, min(2, len(cycle_complete))))
+            if cycle_approaching:
+                balanced.extend(random.sample(cycle_approaching, min(2, len(cycle_approaching))))
+            remaining = numbers_per_draw - len(balanced)
+            if remaining > 0:
+                balanced.extend(random.sample(cycle_ongoing, remaining))
+            balanced.sort()
+            recommendations['balanced'].append(balanced)
+            
+            # 進取型：偏好已達週期和接近週期的號碼
+            aggressive = []
+            priority_numbers = cycle_complete + cycle_approaching
+            if len(priority_numbers) >= numbers_per_draw:
+                aggressive = random.sample(priority_numbers, numbers_per_draw)
+            else:
+                aggressive.extend(priority_numbers)
+                aggressive.extend(random.sample(cycle_ongoing, numbers_per_draw - len(aggressive)))
+            aggressive.sort()
+            recommendations['aggressive'].append(aggressive)
+            
+            # 保守型：偏好未達週期的號碼
+            conservative = []
+            if len(cycle_ongoing) >= numbers_per_draw:
+                conservative = random.sample(cycle_ongoing, numbers_per_draw)
+            else:
+                conservative.extend(random.sample(cycle_ongoing, len(cycle_ongoing)))
+                conservative.extend(random.sample(cycle_approaching, numbers_per_draw - len(conservative)))
+            conservative.sort()
+            recommendations['conservative'].append(conservative)
+        
+        # 生成分析說明
+        analysis_description = {
+            '選號策略': '''根據號碼的週期性出現規律進行分析和推薦。
+            
+            分析每個號碼的平均出現週期，評估當前遺漏期數''',
+            
+            '推薦組合': f'''提供三種不同風格的選號組合：
+            
+            平衡型：混合不同週期狀態的號碼
+            進取型：偏好已達週期的號碼
+            保守型：偏好未達週期的號碼''',
+            
+            '使用建議': '''建議根據個人風格選擇合適的組合類型。
+            
+            參考依據：
+            <strong style="color: #dc3545">【週期指標】</strong>
+            - 平均週期：該號碼平均每隔幾期會出現一次
+            - 最短週期：歷史上最快多少期就開出
+            - 最長週期：歷史上最久多少期才開出
+            
+            <strong style="color: #0d6efd">【週期狀態】</strong>
+            - 已達週期：遺漏期數已超過平均週期
+            - 接近週期：遺漏期數達到平均週期的70%以上
+            - 未達週期：遺漏期數低於平均週期的70%
+            
+            <strong style="color: #198754">【選號策略】</strong>
+            - 平衡型：混合不同週期狀態的號碼
+            - 進取型：優先選擇已達週期的號碼
+            - 保守型：偏好未達週期的號碼
+            
+            溫馨提醒：
+            記得理性購買，適度娛樂。'''
+        }
+        
+        # 準備分析結果
+        cycle_analysis = df.to_dict('records')
+        
+        return {
+            'balanced_numbers': recommendations['balanced'],
+            'aggressive_numbers': recommendations['aggressive'],
+            'conservative_numbers': recommendations['conservative'],
+            'cycle_analysis': cycle_analysis,
             'analysis_description': analysis_description
         }

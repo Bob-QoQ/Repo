@@ -6,16 +6,289 @@
     <title>樂透分析系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #121212;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-primary: #3498db;
+            --accent-success: #2ecc71;
+            --accent-warning: #f1c40f;
+            --accent-danger: #e74c3c;
+            --border-color: #404040;
+            --hover-bg: rgba(255, 255, 255, 0.1);
+            --dark-text: rgba(0, 0, 0, 0.9);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
         .result-section {
             margin-top: 20px;
             padding: 15px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 5px;
+            background-color: var(--bg-card);
         }
+
+        .table {
+            color: var(--text-primary);
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .form-control {
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .form-control:focus {
+            background-color: var(--bg-secondary);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        .alert {
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color);
+        }
+
+        .alert-info {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: rgba(52, 152, 219, 0.2);
+            color: var(--text-primary);
+        }
+
+        .alert-warning {
+            background-color: rgba(241, 196, 15, 0.1);
+            border-color: rgba(241, 196, 15, 0.2);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-success {
+            background-color: var(--accent-success);
+            border-color: var(--accent-success);
+        }
+
         .loading {
             display: none;
             text-align: center;
             padding: 20px;
+            color: var(--text-primary);
+        }
+
+        /* 選擇框樣式優化 */
+        select.form-control option {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* 表格優化 */
+        .table-hover tbody tr:hover {
+            background-color: var(--hover-bg);
+        }
+
+        /* 按鈕懸停效果 */
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Badge 樣式優化 */
+        .badge {
+            padding: 0.5em 0.8em;
+            font-weight: 500;
+        }
+
+        /* 分隔線樣式 */
+        hr {
+            border-color: var(--border-color);
+            opacity: 0.2;
+        }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* 表格標題行樣式 */
+        .table thead th {
+            background-color: var(--bg-secondary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        /* 深色背景配淺色文字 */
+        .bg-dark, .bg-primary, .bg-success, .bg-danger, .bg-secondary {
+            color: var(--text-primary) !important;
+        }
+
+        /* 淺色背景配深色文字 */
+        .bg-warning, .bg-info, .bg-light {
+            color: var(--dark-text) !important;
+        }
+
+        /* Badge 文字顏色調整 */
+        .badge.bg-warning {
+            color: var(--dark-text);
+        }
+
+        /* Alert 文字顏色調整 */
+        .alert-warning, .alert-info {
+            color: var(--text-primary);
+        }
+
+        /* 表格標題顏色調整 */
+        .table thead th {
+            color: var(--text-primary);
+        }
+
+        /* Card header 文字顏色調整 */
+        .card-header {
+            color: var(--text-primary);
+        }
+
+        /* 特殊背景下的文字顏色 */
+        .bg-warning .text-dark {
+            color: var(--dark-text) !important;
+        }
+
+        /* 修正深色背景下的文字顏色 */
+        .card-header.bg-light {
+            color: var(--dark-text);
+        }
+
+        .badge.bg-warning,
+        .badge.bg-info,
+        .badge.bg-light {
+            color: var(--dark-text) !important;
+        }
+
+        .alert-warning,
+        .alert-info {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 修正表格中的文字顏色 */
+        .table-light th,
+        .table-light td {
+            color: var(--dark-text);
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* 修正保守型選號的顏色 */
+        .card-header.bg-warning {
+            color: var(--dark-text);
+        }
+
+        /* 修正區間分析的標題顏色 */
+        .card-header.bg-light h6 {
+            color: var(--dark-text);
+        }
+
+        /* 修正提示文字的顏色 */
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        /* 修正連號分析中的警告標籤 */
+        .badge.bg-warning.text-dark {
+            color: var(--dark-text) !important;
+            font-weight: 600;
+        }
+
+        /* 深色背景下的文字顏色修正 */
+        .card-body {
+            color: var(--text-primary);
+        }
+
+        /* Alert 內文字顏色修正 */
+        .alert {
+            color: var(--text-primary);
+        }
+
+        .alert-success, 
+        .alert-info, 
+        .alert-warning {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+
+        /* 進取型選號說明文字修正 */
+        .card .alert {
+            color: var(--text-primary);
+        }
+
+        /* 號碼分析詳情文字修正 */
+        .analysis-details,
+        .analysis-details h6,
+        .analysis-details p,
+        .analysis-details li {
+            color: var(--text-primary);
+        }
+
+        /* 表格內文字顏色修正 */
+        .table {
+            color: var(--text-primary);
+        }
+
+        /* 特殊背景下的文字顏色例外處理 */
+        .bg-warning.text-dark,
+        .bg-info.text-dark,
+        .bg-light.text-dark {
+            color: var(--dark-text) !important;
         }
     </style>
 </head>
@@ -31,7 +304,7 @@
             <div class="card-body">
                 <div class="row align-items-center mb-3">
                     <div class="col-md-4">
-                        <div class="form-group">
+                        <div class="form-group mb-3">
                             <label for="recommendLotteryType" class="form-label">選擇樂透類型</label>
                             <select class="form-control" id="recommendLotteryType">
                                 <option value="big_lotto">大樂透</option>
@@ -41,14 +314,23 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="recommendPeriods" class="form-label">分析期數</label>
-                            <input type="number" class="form-control" id="recommendPeriods" 
-                                   placeholder="留空分析所有資料">
+                        <div class="form-group mb-3">
+                            <label for="recommendMethod" class="form-label">推薦方法</label>
+                            <select class="form-control" id="recommendMethod">
+                                <option value="hot_cold">冷熱門分析法</option>
+                                <option value="interval">區間平衡法</option>
+                                <option value="odd_even">奇偶均衡法</option>
+                                <option value="sequence">連號分析法</option>
+                                <option value="cycle">週期回歸法</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button class="btn btn-primary w-100" onclick="getRecommendation()">立即推薦</button>
+                    <div class="col-md-4">
+                        <div class="form-group mb-3">
+                            <label for="recommendPeriods" class="form-label">分析期數</label>
+                            <input type="number" class="form-control" id="recommendPeriods" 
+                                   placeholder="輸入回測期數（留空分析所有期數）">
+                        </div>
                     </div>
                 </div>
                 <div class="row">
@@ -62,6 +344,9 @@
                             </span>
                         </div>
                     </div>
+                </div>
+                <div class="text-center mt-2">
+                    <button class="btn btn-primary" style="width: auto;" onclick="getRecommendation()">立即推薦</button>
                 </div>
             </div>
             <!-- 推薦結果將顯示在這裡 -->
@@ -107,8 +392,9 @@
                     
                     <div class="col-md-4">
                         <div class="form-group mb-3">
-                            <label for="periods">分析期數 (可選)</label>
-                            <input type="number" class="form-control" id="periods" placeholder="留空分析所有資料">
+                            <label for="periods">分析期數</label>
+                            <input type="number" class="form-control" id="periods" 
+                                   placeholder="輸入回測期數（留空分析所有期數）">
                         </div>
                     </div>
                 </div>
@@ -139,7 +425,15 @@
             <p class="mt-2">分析中，請稍候...</p>
         </div>
         
-        <div id="dataRange" class="result-section"></div>
+        <!-- 資料範圍區域 -->
+        <div class="card mb-4" id="dataRange">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">資料範圍</h5>
+            </div>
+            <div class="card-body">
+            </div>
+        </div>
+
         <div id="result" class="result-section"></div>
     </div>
 
@@ -155,18 +449,36 @@
         }
 
         function updateDataRange() {
-            const lotteryType = document.getElementById('lotteryType').value;
-            fetch(`/data_range?lottery_type=${lotteryType}`)
+            fetch('/data_range')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('dataRange').innerHTML = `
-                        <h4>資料範圍</h4>
-                        <div class="alert alert-info">
-                            <strong>最新一期：</strong> 第 ${data.latest_term} 期
-                        </div>
-                        <p>從 ${data.start_date} 到 ${data.end_date}</p>
-                        <p>共 ${data.total_draws} 期</p>
-                    `;
+                    let html = '<div class="row">';
+                    
+                    // 遍歷每種樂透類型
+                    for (const [type, info] of Object.entries(data)) {
+                        html += `
+                            <div class="col-md-4">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-dark text-white">
+                                        ${info.name}
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-secondary mb-2">
+                                            <strong>最新一期：</strong> 第 ${info.latest_term} 期
+                                        </div>
+                                        <small class="text-muted">
+                                            <div>從 ${info.start_date}</div>
+                                            <div>到 ${info.end_date}</div>
+                                            <div>共 ${info.total_draws} 期</div>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    html += '</div>';
+                    document.querySelector('#dataRange .card-body').innerHTML = html;
                 });
         }
 
@@ -249,6 +561,8 @@
                 case 'probability':
                     html += displayProbabilityAnalysis(result);
                     break;
+                default:
+                    html += '<div class="alert alert-warning">未知的分析類型</div>';
             }
             
             document.getElementById('result').innerHTML = html;
@@ -259,7 +573,7 @@
             
             // 分析說明
             html += '<div class="card mb-4">';
-            html += '<div class="card-header bg-light"><h5 class="mb-0">分析方法說明</h5></div>';
+            html += '<div class="card-header bg-light"><h5 class="mb-0 text-dark">分析方法說明</h5></div>';
             html += '<div class="card-body">';
             html += '<div class="row">';
             
@@ -268,7 +582,7 @@
             html += '<div class="card h-100 border-danger">';
             html += '<div class="card-header bg-danger text-white">熱門號碼分析</div>';
             html += '<div class="card-body">';
-            html += '<p class="card-text">' + (result.analysis_description['熱門號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '<p class="card-text text-white">' + (result.analysis_description['熱門號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
             html += '</div></div></div>';
             
             // 低頻號碼說明
@@ -276,7 +590,7 @@
             html += '<div class="card h-100 border-secondary">';
             html += '<div class="card-header bg-secondary text-white">低頻號碼分析</div>';
             html += '<div class="card-body">';
-            html += '<p class="card-text">' + (result.analysis_description['低頻號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '<p class="card-text text-white">' + (result.analysis_description['低頻號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
             html += '</div></div></div>';
             
             // 遺漏號碼說明
@@ -284,7 +598,7 @@
             html += '<div class="card h-100 border-primary">';
             html += '<div class="card-header bg-primary text-white">遺漏號碼分析</div>';
             html += '<div class="card-body">';
-            html += '<p class="card-text">' + (result.analysis_description['遺漏號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
+            html += '<p class="card-text text-white">' + (result.analysis_description['遺漏號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
             html += '</div></div></div>';
             
             // 趨勢分析說明
@@ -300,21 +614,41 @@
             // 基本統計摘要
             html += '<h5>基本統計摘要</h5>';
             html += '<div class="table-responsive"><table class="table table-striped">';
-            html += `<tr><th>總開獎次數</th><td>${result.summary_stats.total_draws}期</td></tr>`;
-            html += `<tr><th>號碼範圍</th><td>${result.summary_stats.min_number} - ${result.summary_stats.max_number}</td></tr>`;
-            html += `<tr><th>最常開出號碼</th><td>${result.summary_stats.most_common_numbers}</td></tr>`;
-            html += '</table></div>';
+            html += '<thead class="table-dark"><tr><th>項目</th><th>數值</th></tr></thead>';
+            html += '<tbody>';
+            html += `<tr>
+                <th class="text-white">總開獎次數</th>
+                <td class="text-white">${result.summary_stats.total_draws}期</td>
+            </tr>`;
+            html += `<tr>
+                <th class="text-white">號碼範圍</th>
+                <td class="text-white">${result.summary_stats.min_number} - ${result.summary_stats.max_number}</td>
+            </tr>`;
+            html += `<tr>
+                <th class="text-white">最常開出號碼</th>
+                <td class="text-white">${result.summary_stats.most_common_numbers}</td>
+            </tr>`;
+            html += '</tbody></table></div>';
             
             // 熱門號碼分析
-            html += '<h5 class="mt-4">熱門號碼分析</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>出現頻率</th><th>出現率</th><th>最近開出</th><th>開出記錄</th></tr></thead><tbody>';
+            html += '<h5 class="mt-4">熱門號碼分析</h5>';
+            html += '<div class="table-responsive"><table class="table table-striped">';
+            html += `<thead class="table-dark">
+                <tr>
+                    <th>號碼</th>
+                    <th>出現頻率</th>
+                    <th>出現率</th>
+                    <th>最近開出</th>
+                    <th>開出記錄</th>
+                </tr>
+            </thead><tbody>`;
             result.hot_numbers.forEach(num => {
                 html += `<tr>
                     <td><span class="badge bg-danger">${num.number}</span></td>
-                    <td>${num.frequency}</td>
-                    <td>${num.percentage}%</td>
-                    <td>${num.last_appearance}</td>
-                    <td><small>${num.recent_draws}</small></td>
+                    <td class="text-white">${num.frequency}</td>
+                    <td class="text-white">${num.percentage}%</td>
+                    <td class="text-white">${num.last_appearance || '未開出'}</td>
+                    <td class="text-white">${num.recent_draws || '無記錄'}</td>
                 </tr>`;
             });
             html += '</tbody></table></div>';
@@ -325,16 +659,26 @@
             // 低頻號碼
             html += '<h6 class="mt-3">低頻號碼（出現頻率低於平均值的80%）</h6>';
             html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>總出現次數</th><th>最後開出</th><th>遺漏期數</th><th>歷史出現率</th></tr></thead><tbody>';
+            html += `<thead class="table-dark">
+                <tr>
+                    <th>號碼</th>
+                    <th>總出現次數</th>
+                    <th>最後開出</th>
+                    <th>遺漏期數</th>
+                    <th>歷史出現率</th>
+                </tr>
+            </thead><tbody>`;
             result.cold_numbers
                 .filter(num => num.cold_type === '低頻')
                 .forEach(num => {
+                    const missClass = num.draws_since_last > 10 ? 'text-danger' : 
+                                    num.draws_since_last > 5 ? 'text-warning' : 'text-success';
                     html += `<tr>
                         <td><span class="badge bg-secondary">${num.number}</span></td>
-                        <td>${num.total_appearances}</td>
-                        <td>${num.last_appearance}</td>
-                        <td>${num.draws_since_last}</td>
-                        <td>${num.historical_percentage}%</td>
+                        <td class="text-white">${num.total_appearances}</td>
+                        <td class="text-white">${num.last_appearance}</td>
+                        <td class="${missClass}">${num.draws_since_last}</td>
+                        <td class="text-white">${num.historical_percentage}%</td>
                     </tr>`;
                 });
             html += '</tbody></table></div>';
@@ -342,16 +686,26 @@
             // 遺漏號碼
             html += '<h6 class="mt-3">遺漏號碼（超過10期未開出）</h6>';
             html += '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>號碼</th><th>總出現次數</th><th>最後開出</th><th>遺漏期數</th><th>歷史出現率</th></tr></thead><tbody>';
+            html += `<thead class="table-dark">
+                <tr>
+                    <th>號碼</th>
+                    <th>總出現次數</th>
+                    <th>最後開出</th>
+                    <th>遺漏期數</th>
+                    <th>歷史出現率</th>
+                </tr>
+            </thead><tbody>`;
             result.cold_numbers
                 .filter(num => num.cold_type === '遺漏')
                 .forEach(num => {
+                    const missClass = num.draws_since_last > 10 ? 'text-danger' : 
+                                    num.draws_since_last > 5 ? 'text-warning' : 'text-success';
                     html += `<tr>
                         <td><span class="badge bg-primary">${num.number}</span></td>
-                        <td>${num.total_appearances}</td>
-                        <td>${num.last_appearance}</td>
-                        <td>${num.draws_since_last}</td>
-                        <td>${num.historical_percentage}%</td>
+                        <td class="text-white">${num.total_appearances}</td>
+                        <td class="text-white">${num.last_appearance}</td>
+                        <td class="${missClass}">${num.draws_since_last}</td>
+                        <td class="text-white">${num.historical_percentage}%</td>
                     </tr>`;
                 });
             html += '</tbody></table></div>';
@@ -364,26 +718,55 @@
             
             // 區間統計
             html += '<h5>號碼分區統計</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>區間</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
+            html += `<thead class="table-dark">
+                <tr>
+                    <th>區間</th>
+                    <th>出現次數</th>
+                    <th>百分比</th>
+                </tr>
+            </thead><tbody>`;
             result.section_stats.forEach(section => {
-                html += `<tr><td>${section.section_start}-${section.section_end}</td>
-                        <td>${section.frequency}</td><td>${section.percentage}%</td></tr>`;
+                html += `<tr>
+                    <td class="text-white">${section.section_start}-${section.section_end}</td>
+                    <td class="text-white">${section.frequency}</td>
+                    <td class="text-white">${section.percentage}%</td>
+                </tr>`;
             });
             html += '</tbody></table></div>';
             
             // 大小比例
             html += '<h5 class="mt-4">大小號碼比例</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>比例</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
+            html += `<thead class="table-dark">
+                <tr>
+                    <th>比例</th>
+                    <th>出現次數</th>
+                    <th>百分比</th>
+                </tr>
+            </thead><tbody>`;
             result.size_ratio.forEach(ratio => {
-                html += `<tr><td>${ratio.ratio}</td><td>${ratio.frequency}</td><td>${ratio.percentage}%</td></tr>`;
+                html += `<tr>
+                    <td class="text-white">${ratio.ratio}</td>
+                    <td class="text-white">${ratio.frequency}</td>
+                    <td class="text-white">${ratio.percentage}%</td>
+                </tr>`;
             });
             html += '</tbody></table></div>';
             
             // 奇偶比例
             html += '<h5 class="mt-4">奇偶數比例</h5><div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>比例</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
+            html += `<thead class="table-dark">
+                <tr>
+                    <th>比例</th>
+                    <th>出現次數</th>
+                    <th>百分比</th>
+                </tr>
+            </thead><tbody>`;
             result.odd_even_ratio.forEach(ratio => {
-                html += `<tr><td>${ratio.ratio}</td><td>${ratio.frequency}</td><td>${ratio.percentage}%</td></tr>`;
+                html += `<tr>
+                    <td class="text-white">${ratio.ratio}</td>
+                    <td class="text-white">${ratio.frequency}</td>
+                    <td class="text-white">${ratio.percentage}%</td>
+                </tr>`;
             });
             html += '</tbody></table></div>';
             
@@ -396,10 +779,19 @@
             // 連續號碼統計
             if (result.consecutive_stats && result.consecutive_stats.length > 0) {
                 html += '<h5>連續號碼統計</h5><div class="table-responsive"><table class="table table-striped">';
-                html += '<thead><tr><th>連續數量</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
+                html += `<thead class="table-dark">
+                    <tr>
+                        <th>連續數量</th>
+                        <th>出現次數</th>
+                        <th>百分比</th>
+                    </tr>
+                </thead><tbody>`;
                 result.consecutive_stats.forEach(stat => {
-                    html += `<tr><td>${stat.consecutive_count}個連續號碼</td>
-                            <td>${stat.frequency}</td><td>${stat.percentage}%</td></tr>`;
+                    html += `<tr>
+                        <td class="text-white">${stat.consecutive_count}</td>
+                        <td class="text-white">${stat.frequency}</td>
+                        <td class="text-white">${stat.percentage}%</td>
+                    </tr>`;
                 });
                 html += '</tbody></table></div>';
             }
@@ -407,9 +799,19 @@
             // 號碼間隔統計
             if (result.gap_stats && result.gap_stats.length > 0) {
                 html += '<h5 class="mt-4">號碼間隔統計</h5><div class="table-responsive"><table class="table table-striped">';
-                html += '<thead><tr><th>間隔</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
+                html += `<thead class="table-dark">
+                    <tr>
+                        <th>間隔</th>
+                        <th>出現次數</th>
+                        <th>百分比</th>
+                    </tr>
+                </thead><tbody>`;
                 result.gap_stats.forEach(stat => {
-                    html += `<tr><td>${stat.gap}</td><td>${stat.frequency}</td><td>${stat.percentage}%</td></tr>`;
+                    html += `<tr>
+                        <td class="text-white">${stat.gap}</td>
+                        <td class="text-white">${stat.frequency}</td>
+                        <td class="text-white">${stat.percentage}%</td>
+                    </tr>`;
                 });
                 html += '</tbody></table></div>';
             }
@@ -417,10 +819,21 @@
             // 個別號碼間隔分析
             if (result.number_gaps && result.number_gaps.length > 0) {
                 html += '<h5 class="mt-4">個別號碼間隔分析</h5><div class="table-responsive"><table class="table table-striped">';
-                html += '<thead><tr><th>號碼</th><th>平均間隔</th><th>最短間隔</th><th>最長間隔</th></tr></thead><tbody>';
+                html += `<thead class="table-dark">
+                    <tr>
+                        <th>號碼</th>
+                        <th>平均間隔</th>
+                        <th>最短間隔</th>
+                        <th>最長間隔</th>
+                    </tr>
+                </thead><tbody>`;
                 result.number_gaps.forEach(stat => {
-                    html += `<tr><td>${stat.number}</td><td>${stat.avg_gap}</td>
-                            <td>${stat.min_gap}</td><td>${stat.max_gap}</td></tr>`;
+                    html += `<tr>
+                        <td class="text-white">${stat.number}</td>
+                        <td class="text-white">${stat.avg_gap}</td>
+                        <td class="text-white">${stat.min_gap}</td>
+                        <td class="text-white">${stat.max_gap}</td>
+                    </tr>`;
                 });
                 html += '</tbody></table></div>';
             }
@@ -501,9 +914,19 @@
             // 近期熱門號碼
             if (result.hot_numbers && result.hot_numbers.length > 0) {
                 html += '<h5>近期熱門號碼</h5><div class="table-responsive"><table class="table table-striped">';
-                html += '<thead><tr><th>號碼</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
+                html += `<thead class="table-dark">
+                    <tr>
+                        <th>號碼</th>
+                        <th>出現次數</th>
+                        <th>百分比</th>
+                    </tr>
+                </thead><tbody>`;
                 result.hot_numbers.forEach(num => {
-                    html += `<tr><td>${num.number}</td><td>${num.frequency}</td><td>${num.percentage}%</td></tr>`;
+                    html += `<tr>
+                        <td class="text-white">${num.number}</td>
+                        <td class="text-white">${num.frequency}</td>
+                        <td class="text-white">${num.percentage}%</td>
+                    </tr>`;
                 });
                 html += '</tbody></table></div>';
             }
@@ -511,10 +934,21 @@
             // 近期冷門號碼
             if (result.cold_numbers && result.cold_numbers.length > 0) {
                 html += '<h5 class="mt-4">近期冷門號碼</h5><div class="table-responsive"><table class="table table-striped">';
-                html += '<thead><tr><th>號碼</th><th>最後出現日期</th><th>間隔天數</th><th>總出現次數</th></tr></thead><tbody>';
+                html += `<thead class="table-dark">
+                    <tr>
+                        <th>號碼</th>
+                        <th>最後出現日期</th>
+                        <th>間隔天數</th>
+                        <th>總出現次數</th>
+                    </tr>
+                </thead><tbody>`;
                 result.cold_numbers.forEach(num => {
-                    html += `<tr><td>${num.number}</td><td>${num.last_date}</td>
-                            <td>${num.days_since_last}</td><td>${num.total_appearances}</td></tr>`;
+                    html += `<tr>
+                        <td class="text-white">${num.number}</td>
+                        <td class="text-white">${num.last_date}</td>
+                        <td class="text-white">${num.days_since_last}</td>
+                        <td class="text-white">${num.total_appearances}</td>
+                    </tr>`;
                 });
                 html += '</tbody></table></div>';
             }
@@ -547,22 +981,16 @@
         }
 
         function displayRecommendation(result) {
-            let html = '<div class="card">';
+            let html = '<div class="card mb-4"><div class="card-body">';
             
             // 分析說明
-            html += '<div class="card-header bg-primary text-white">選號推薦</div>';
-            html += '<div class="card-body">';
-            html += '<div class="mb-4"><h6>推薦說明：</h6>';
-            html += '<div class="card-text">';
-            for (let key in result.analysis_description) {
-                html += `<div class="mb-3">`;
-                html += `<strong class="d-block mb-2">${key}：</strong>`;
-                html += `<p class="ms-3">${(result.analysis_description[key] || '').replace(/\n/g, '<br>')}</p>`;
-                html += `</div>`;
+            html += '<div class="mb-4">';
+            for (const [key, value] of Object.entries(result.analysis_description)) {
+                html += `<h6>${key}：</h6><p class="text-muted">${value.replace(/\n/g, '<br>')}</p>`;
             }
-            html += '</div></div>';
+            html += '</div>';
             
-            // 修改推薦號碼顯示部分
+            // 推薦組合
             html += '<div class="row">';
             
             // 平衡型
@@ -635,25 +1063,407 @@
             
             // 號碼分析詳情
             html += '<div class="mt-4">';
-            html += '<h6>號碼分析詳情：</h6>';
-            html += '<div class="table-responsive"><table class="table table-sm table-striped">';
-            html += '<thead><tr><th>號碼</th><th>頻率</th><th>最後開出</th><th>遺漏期數</th><th>命中率</th><th>類型</th><th>推薦分數</th></tr></thead><tbody>';
-            result.number_analysis.forEach(num => {
-                let typeClass = num.number_type === 'H' ? 'text-danger' : 'text-primary';
-                html += `<tr>
-                    <td>${num.number}</td>
-                    <td>${num.frequency}</td>
-                    <td>${num.last_appearance}</td>
-                    <td>${num.missing_draws}</td>
-                    <td>${num.hit_rate}%</td>
-                    <td class="${typeClass}">${num.number_type === 'H' ? '熱門' : '冷門'}</td>
-                    <td>${num.recommendation_score}</td>
-                </tr>`;
-            });
-            html += '</tbody></table></div>';
-            html += '</div>';
             
-            html += '</div></div>';
+            // 根據不同的分析方法顯示不同的內容
+            const method = document.getElementById('recommendMethod').value;
+            
+            // 如果是連號分析法，顯示特殊的分析表格
+            if (result.draw_analysis) {  // 連號分析法
+                html += '<div class="row">';
+                
+                // 連號分析說明
+                html += '<div class="col-12">';
+                html += '<h6>連號分析詳情：</h6>';
+                html += '<div class="alert alert-info">';
+                html += '<h6>連號說明：</h6>';
+                html += '<ul>';
+                html += '<li>連號定義：相鄰的兩個號碼（例如：5,6 或 12,13）</li>';
+                html += '<li>連號組數：一期可能出現0-3組連號</li>';
+                html += '<li>連號位置：可能出現在任何位置</li>';
+                html += '</ul>';
+                html += '</div>';
+                
+                // 連號分布分析
+                const withSequence = result.draw_analysis.filter(d => d.sequence_count > 0);
+                const noSequence = result.draw_analysis.filter(d => d.sequence_count === 0);
+                
+                // 有連號的開獎結果
+                html += '<div class="card mb-3">';
+                html += '<div class="card-header bg-warning">';
+                html += '<h6 class="mb-0">有連號的開獎結果</h6>';
+                html += '</div>';
+                html += '<div class="card-body">';
+                html += '<div class="table-responsive">';
+                html += '<table class="table table-sm">';
+                html += '<thead><tr>';
+                html += '<th>期數</th>';
+                html += '<th>開獎日期</th>';
+                html += '<th>開出號碼</th>';
+                html += '<th>連號組數</th>';
+                html += '</tr></thead><tbody>';
+                
+                withSequence.slice(0, 10).forEach(draw => {
+                    html += `<tr>
+                        <td>${draw.draw_term}</td>
+                        <td>${draw.draw_date}</td>
+                        <td>${draw.numbers}</td>
+                        <td><span class="badge bg-warning text-dark">${draw.sequence_count}組連號</span></td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+                if (withSequence.length > 10) {
+                    html += '<div class="text-center mt-2">';
+                    html += '<small class="text-muted">僅顯示最近10期的結果</small>';
+                    html += '</div>';
+                }
+                html += '</div></div></div>';
+                
+                // 連號統計摘要
+                const totalDraws = result.draw_analysis.length;
+                const drawsWithSequence = result.draw_analysis.filter(d => d.sequence_count > 0).length;
+                const sequencePercentage = ((drawsWithSequence / totalDraws) * 100).toFixed(1);
+                const avgSequenceCount = (result.draw_analysis.reduce((sum, d) => sum + d.sequence_count, 0) / totalDraws).toFixed(2);
+                
+                html += '<div class="alert alert-warning mt-3">';
+                html += '<h6>連號統計摘要：</h6>';
+                html += '<div class="row">';
+                html += '<div class="col-md-3">';
+                html += `<p class="mb-1"><strong>分析期數</strong></p>`;
+                html += `<p class="mb-0">共 ${totalDraws} 期</p>`;
+                html += '</div>';
+                html += '<div class="col-md-3">';
+                html += `<p class="mb-1"><strong>出現連號機率</strong></p>`;
+                html += `<p class="mb-0">${sequencePercentage}%</p>`;
+                html += '</div>';
+                html += '<div class="col-md-3">';
+                html += `<p class="mb-1"><strong>平均連號組數</strong></p>`;
+                html += `<p class="mb-0">每期 ${avgSequenceCount} 組</p>`;
+                html += '</div>';
+                html += '<div class="col-md-3">';
+                html += `<p class="mb-1"><strong>連號出現次數</strong></p>`;
+                html += `<p class="mb-0">${drawsWithSequence}期有連號</p>`;
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            } else if (result.cycle_analysis) {  // 週期回歸法
+                html += '<div class="row">';
+                
+                // 週期分析說明
+                html += '<div class="col-12">';
+                html += '<h6>週期分析說明：</h6>';
+                html += '<div class="alert alert-info">';
+                html += '<p>每個號碼都有其出現的週期性，我們透過以下指標來分析：</p>';
+                html += '<ul>';
+                html += '<li><strong>平均週期</strong>：該號碼平均每隔幾期會出現一次</li>';
+                html += '<li><strong>遺漏期數</strong>：該號碼到目前為止已經多少期沒出現</li>';
+                html += '<li><strong>週期狀態</strong>：根據遺漏期數與平均週期的比較來判斷：</li>';
+                html += '<ul>';
+                html += '<li><span class="text-danger">已達週期</span>：當前遺漏期數 ≥ 平均週期（例：平均10期開出一次，目前已遺漏12期）</li>';
+                html += '<li><span class="text-warning">接近週期</span>：當前遺漏期數 ≥ 平均週期的70%（例：平均10期開出一次，目前已遺漏7期）</li>';
+                html += '<li><span class="text-secondary">未達週期</span>：當前遺漏期數 < 平均週期的70%（例：平均10期開出一次，目前遺漏5期）</li>';
+                html += '</ul>';
+                html += '<li><strong>其他指標說明：</strong></li>';
+                html += '<ul>';
+                html += '<li><strong>最短週期</strong>：歷史上該號碼最快多少期就開出</li>';
+                html += '<li><strong>最長週期</strong>：歷史上該號碼最久多少期才開出</li>';
+                html += '<li><strong>開出次數</strong>：在分析期間內總共開出幾次</li>';
+                html += '</ul>';
+                html += '</ul>';
+                html += '</div>';
+                
+                // 週期分析表格
+                html += '<div class="table-responsive">';
+                html += '<h6>號碼週期分析：</h6>';
+                html += '<table class="table table-sm table-hover">';
+                html += '<thead class="table-light"><tr>';
+                html += '<th>號碼</th>';
+                html += '<th>平均週期</th>';
+                html += '<th>遺漏期數</th>';
+                html += '<th>週期狀態</th>';
+                html += '<th>開出次數</th>';
+                html += '<th>最短週期</th>';
+                html += '<th>最長週期</th>';
+                html += '</tr></thead><tbody>';
+                
+                // 按週期狀態排序：已達週期 > 接近週期 > 未達週期
+                const sortedAnalysis = [...result.cycle_analysis].sort((a, b) => {
+                    const statusOrder = { 'C1': 0, 'C2': 1, 'C3': 2 };
+                    return statusOrder[a.cycle_status] - statusOrder[b.cycle_status];
+                });
+                
+                sortedAnalysis.forEach(num => {
+                    let statusClass = '';
+                    let statusText = '';
+                    let rowClass = '';
+                    
+                    if (num.cycle_status === 'C1') {
+                        statusClass = 'text-danger fw-bold';
+                        statusText = '已達週期';
+                        rowClass = 'table-danger';
+                    } else if (num.cycle_status === 'C2') {
+                        statusClass = 'text-warning fw-bold';
+                        statusText = '接近週期';
+                        rowClass = 'table-warning';
+                    } else {
+                        statusClass = 'text-secondary';
+                        statusText = '未達週期';
+                    }
+                    
+                    html += `<tr class="${rowClass}">
+                        <td class="fw-bold">${num.number}</td>
+                        <td>${num.avg_cycle}期</td>
+                        <td>${num.missing_draws}期</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td>${num.frequency}次</td>
+                        <td>${num.min_cycle}期</td>
+                        <td>${num.max_cycle}期</td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+                
+                // 週期統計摘要
+                const totalNumbers = result.cycle_analysis.length;
+                const cycleComplete = result.cycle_analysis.filter(n => n.cycle_status === 'C1').length;
+                const cycleApproaching = result.cycle_analysis.filter(n => n.cycle_status === 'C2').length;
+                
+                html += '<div class="alert alert-warning mt-3">';
+                html += '<h6>週期分析總結：</h6>';
+                html += '<div class="row">';
+                html += '<div class="col-md-4">';
+                html += `<p class="text-danger"><strong>已達週期號碼：${cycleComplete}個</strong></p>`;
+                html += '<small>這些號碼已超過平均週期，有較高機會開出</small>';
+                html += '</div>';
+                html += '<div class="col-md-4">';
+                html += `<p class="text-warning"><strong>接近週期號碼：${cycleApproaching}個</strong></p>`;
+                html += '<small>這些號碼即將到達週期，需要關注</small>';
+                html += '</div>';
+                html += '<div class="col-md-4">';
+                html += `<p class="text-secondary"><strong>未達週期號碼：${totalNumbers - cycleComplete - cycleApproaching}個</strong></p>`;
+                html += '<small>這些號碼距離下次開出還有一段時間</small>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+                
+                html += '</div>';
+                html += '</div>'; // row end
+            } else if (method === 'interval') {  // 區間平衡法
+                // 區間分析的特殊顯示方式
+                html += '<div class="mt-4">';
+                html += '<h6>區間分析詳情：</h6>';
+                
+                // 區間說明
+                html += '<div class="alert alert-info mb-3">';
+                html += '<h6>區間劃分說明：</h6>';
+                html += '<ul class="mb-0">';
+                html += '<li>區間1：1-10號</li>';
+                html += '<li>區間2：11-20號</li>';
+                html += '<li>區間3：21-30號</li>';
+                html += '<li>區間4：31-40號</li>';
+                html += '<li>區間5：41-49號（大樂透/威力彩）或 41-39號（今彩539）</li>';
+                html += '</ul>';
+                html += '</div>';
+                
+                // 分區顯示號碼分析
+                for (let i = 1; i <= 5; i++) {
+                    html += `<div class="card mb-3">`;
+                    html += `<div class="card-header bg-light">`;
+                    html += `<h6 class="mb-0">區間${i}：${(i-1)*10 + 1}-${i*10}號</h6>`;
+                    html += `</div>`;
+                    html += `<div class="card-body">`;
+                    html += `<div class="table-responsive">`;
+                    html += `<table class="table table-sm">`;
+                    html += `<thead><tr>`;
+                    html += `<th>號碼</th>`;
+                    html += `<th>開出次數</th>`;
+                    html += `<th>上次開出</th>`;
+                    html += `<th>遺漏期數</th>`;
+                    html += `</tr></thead><tbody>`;
+                    
+                    // 過濾該區間的號碼
+                    const intervalNumbers = result.number_analysis.filter(num => 
+                        num.number > (i-1)*10 && num.number <= i*10
+                    );
+                    
+                    intervalNumbers.forEach(num => {
+                        const missClass = num.missing_draws > 10 ? 'text-danger' : 
+                                        num.missing_draws > 5 ? 'text-warning' : 'text-success';
+                        html += `<tr>
+                            <td class="fw-bold">${num.number}</td>
+                            <td>${num.frequency}次</td>
+                            <td>第${num.last_appearance}期</td>
+                            <td class="${missClass}">${num.missing_draws}期</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div></div></div>`;
+                }
+                
+                // 區間統計摘要
+                html += '<div class="alert alert-warning mt-3">';
+                html += '<h6>區間分析總結：</h6>';
+                html += '<div class="row">';
+                
+                // 計算每個區間的統計數據
+                for (let i = 1; i <= 5; i++) {
+                    const intervalNumbers = result.number_analysis.filter(num => 
+                        num.number > (i-1)*10 && num.number <= i*10
+                    );
+                    const avgFreq = intervalNumbers.reduce((sum, num) => sum + num.frequency, 0) / intervalNumbers.length;
+                    
+                    html += `<div class="col">
+                        <p class="mb-1"><strong>區間${i}</strong></p>
+                        <small>平均開出：${avgFreq.toFixed(1)}次</small>
+                    </div>`;
+                }
+                
+                html += '</div></div>';
+                html += '</div>';
+            } else if (method === 'odd_even') {  // 奇偶均衡法
+                html += '<div class="mt-4">';
+                html += '<h6>奇偶分析詳情：</h6>';
+                
+                // 奇偶說明
+                html += '<div class="alert alert-info mb-3">';
+                html += '<h6>奇偶分類說明：</h6>';
+                html += '<ul class="mb-0">';
+                html += '<li>奇數：1、3、5、7...等尾數為1,3,5,7,9的號碼</li>';
+                html += '<li>偶數：2、4、6、8...等尾數為0,2,4,6,8的號碼</li>';
+                html += '</ul>';
+                html += '</div>';
+                
+                // 分開顯示奇數和偶數
+                const oddNumbers = result.number_analysis.filter(num => num.number_type === 'O');
+                const evenNumbers = result.number_analysis.filter(num => num.number_type === 'E');
+                
+                // 奇數分析
+                html += '<div class="card mb-3">';
+                html += '<div class="card-header bg-success text-white">';
+                html += '<h6 class="mb-0">奇數分析</h6>';
+                html += '</div>';
+                html += '<div class="card-body">';
+                html += '<div class="table-responsive">';
+                html += '<table class="table table-sm">';
+                html += '<thead><tr>';
+                html += '<th>號碼</th>';
+                html += '<th>開出次數</th>';
+                html += '<th>上次開出</th>';
+                html += '<th>遺漏期數</th>';
+                html += '<th>命中率</th>';
+                html += '</tr></thead><tbody>';
+                
+                oddNumbers.forEach(num => {
+                    const missClass = num.missing_draws > 10 ? 'text-danger' : 
+                                    num.missing_draws > 5 ? 'text-warning' : 'text-success';
+                    html += `<tr>
+                        <td class="fw-bold">${num.number}</td>
+                        <td>${num.frequency}次</td>
+                        <td>第${num.last_appearance}期</td>
+                        <td class="${missClass}">${num.missing_draws}期</td>
+                        <td>${num.hit_rate}%</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div></div></div>';
+                
+                // 偶數分析
+                html += '<div class="card mb-3">';
+                html += '<div class="card-header bg-secondary text-white">';
+                html += '<h6 class="mb-0">偶數分析</h6>';
+                html += '</div>';
+                html += '<div class="card-body">';
+                html += '<div class="table-responsive">';
+                html += '<table class="table table-sm">';
+                html += '<thead><tr>';
+                html += '<th>號碼</th>';
+                html += '<th>開出次數</th>';
+                html += '<th>上次開出</th>';
+                html += '<th>遺漏期數</th>';
+                html += '<th>命中率</th>';
+                html += '</tr></thead><tbody>';
+                
+                evenNumbers.forEach(num => {
+                    const missClass = num.missing_draws > 10 ? 'text-danger' : 
+                                    num.missing_draws > 5 ? 'text-warning' : 'text-success';
+                    html += `<tr>
+                        <td class="fw-bold">${num.number}</td>
+                        <td>${num.frequency}次</td>
+                        <td>第${num.last_appearance}期</td>
+                        <td class="${missClass}">${num.missing_draws}期</td>
+                        <td>${num.hit_rate}%</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div></div></div>';
+                
+                // 奇偶統計摘要
+                html += '<div class="alert alert-warning mt-3">';
+                html += '<h6>奇偶分析總結：</h6>';
+                html += '<div class="row">';
+                
+                const oddAvgFreq = oddNumbers.reduce((sum, num) => sum + num.frequency, 0) / oddNumbers.length;
+                const evenAvgFreq = evenNumbers.reduce((sum, num) => sum + num.frequency, 0) / evenNumbers.length;
+                
+                html += `<div class="col-md-6">
+                    <p class="mb-1"><strong>奇數統計</strong></p>
+                    <small>數量：${oddNumbers.length}個</small><br>
+                    <small>平均開出：${oddAvgFreq.toFixed(1)}次</small>
+                </div>`;
+                
+                html += `<div class="col-md-6">
+                    <p class="mb-1"><strong>偶數統計</strong></p>
+                    <small>數量：${evenNumbers.length}個</small><br>
+                    <small>平均開出：${evenAvgFreq.toFixed(1)}次</small>
+                </div>`;
+                
+                html += '</div></div>';
+                html += '</div>';
+            } else {  // 冷熱分析法
+                html += '<h6>號碼分析詳情：</h6>';
+                html += '<div class="table-responsive"><table class="table table-sm table-striped">';
+                html += `<thead class="table-dark">
+                    <tr>
+                        <th>號碼</th>
+                        <th>頻率</th>
+                        <th>最後開出</th>
+                        <th>遺漏期數</th>
+                        <th>命中率</th>
+                        <th>類型</th>
+                        <th>推薦分數</th>
+                    </tr>
+                </thead><tbody>`;
+                
+                result.number_analysis.forEach(num => {
+                    let typeClass = '';
+                    let typeText = '';
+                    
+                    if (method === 'hot_cold') {
+                        typeClass = num.number_type === 'H' ? 'text-danger' : 'text-primary';
+                        typeText = num.number_type === 'H' ? '熱門' : '冷門';
+                    } else if (method === 'odd_even') {
+                        typeClass = num.number_type === 'O' ? 'text-success' : 'text-secondary';
+                        typeText = num.number_type === 'O' ? '奇數' : '偶數';
+                    }
+                    
+                    // 添加遺漏期數的顏色標示
+                    const missClass = num.missing_draws > 10 ? 'text-danger' : 
+                                    num.missing_draws > 5 ? 'text-warning' : 'text-success';
+                    
+                    html += `<tr>
+                        <td class="text-white">${num.number}</td>
+                        <td class="text-white">${num.frequency}</td>
+                        <td class="text-white">${num.last_appearance}</td>
+                        <td class="${missClass}">${num.missing_draws}</td>
+                        <td class="text-white">${num.hit_rate}%</td>
+                        <td class="${typeClass}">${typeText}</td>
+                        <td class="text-white">${num.recommendation_score}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+            }
+            
+            html += '</div>';
             
             document.getElementById('recommendationResult').style.display = 'block';
             document.getElementById('recommendationResult').innerHTML = html;
@@ -662,17 +1472,19 @@
         function getRecommendation() {
             const lotteryType = document.getElementById('recommendLotteryType').value;
             const periods = document.getElementById('recommendPeriods').value;
+            const method = document.getElementById('recommendMethod').value;
             
             showLoading();
             
-            fetch('/recommend_from_hot_cold', {
+            fetch('/recommend', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     lottery_type: lotteryType,
-                    periods: periods || null
+                    periods: periods || null,
+                    method: method
                 })
             })
             .then(response => response.json())
@@ -691,6 +1503,55 @@
         // 頁面載入時更新資料範圍
         document.addEventListener('DOMContentLoaded', updateDataRange);
         document.getElementById('lotteryType').addEventListener('change', updateDataRange);
+
+        // 組合模式分析
+        function displayCombinationAnalysis(result) {
+            let html = '<div class="analysis-section">';
+            html += '<div class="alert alert-info">組合模式分析功能開發中...</div>';
+            html += '</div>';
+            return html;
+        }
+        
+        // 號碼組合預測
+        function displayCombinationPrediction(result) {
+            let html = '<div class="analysis-section">';
+            html += '<div class="alert alert-info">號碼組合預測功能開發中...</div>';
+            html += '</div>';
+            return html;
+        }
+        
+        // 進階統計分析
+        function displayAdvancedStatistics(result) {
+            let html = '<div class="analysis-section">';
+            html += '<div class="alert alert-info">進階統計分析功能開發中...</div>';
+            html += '</div>';
+            return html;
+        }
+        
+        // 遺漏值分析
+        function displayMissingValueAnalysis(result) {
+            let html = '<div class="analysis-section">';
+            html += '<div class="alert alert-info">遺漏值分析功能開發中...</div>';
+            html += '</div>';
+            return html;
+        }
+        
+        // 號碼關聯網絡分析
+        function displayNetworkAnalysis(result) {
+            let html = '<div class="analysis-section">';
+            html += '<div class="alert alert-info">號碼關聯網絡分析功能開發中...</div>';
+            html += '</div>';
+            return html;
+        }
+        
+        // 機率分布分析
+        function displayProbabilityAnalysis(result) {
+            let html = '<div class="analysis-section">';
+            html += '<div class="alert alert-info">機率分布分析功能開發中...</div>';
+            html += '</div>';
+            return html;
+        }
     </script>
 </body>
+</html> 
 </html> 
