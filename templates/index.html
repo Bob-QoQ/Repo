@@ -5,32 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>樂透分析系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #121212;
-            --bg-secondary: #1a1a1a;
-            --bg-card: #2d2d2d;
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-card: #111111;
             --text-primary: #ffffff;
             --text-secondary: #a0a0a0;
-            --accent-primary: #3498db;
-            --accent-success: #2ecc71;
-            --accent-warning: #f1c40f;
-            --accent-danger: #e74c3c;
-            --border-color: #404040;
-            --hover-bg: rgba(255, 255, 255, 0.1);
-            --dark-text: rgba(0, 0, 0, 0.9);
+            --accent-primary: #00ffff;
+            --accent-success: #44ff44;
+            --accent-warning: #ffff44;
+            --accent-danger: #ff4444;
+            --border-color: #505050;
         }
 
         body {
             background-color: var(--bg-primary);
             color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.6;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--accent-primary);
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
         }
 
         .card {
             background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s ease-in-out;
+            border: 1px solid var(--accent-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            transition: all 0.3s ease;
         }
 
         .card:hover {
@@ -53,16 +75,22 @@
 
         .table {
             color: var(--text-primary);
+            border: 1px solid var(--accent-primary);
         }
 
         .table-striped tbody tr:nth-of-type(odd) {
             background-color: rgba(255, 255, 255, 0.05);
         }
 
+        .table-hover tbody tr:hover {
+            background-color: var(--hover-bg);
+        }
+
         .form-control {
-            background-color: var(--bg-secondary);
-            border-color: var(--border-color);
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-primary);
             color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .form-control:focus {
@@ -93,35 +121,23 @@
             color: var(--text-primary);
         }
 
-        .btn-primary {
-            background-color: var(--accent-primary);
-            border-color: var(--accent-primary);
-        }
-
-        .btn-success {
-            background-color: var(--accent-success);
-            border-color: var(--accent-success);
-        }
-
         .loading {
             display: none;
             text-align: center;
             padding: 20px;
             color: var(--text-primary);
+            animation: blink 1s infinite;
         }
 
-        /* 選擇框樣式優化 */
         select.form-control option {
             background-color: var(--bg-secondary);
             color: var(--text-primary);
         }
 
-        /* 表格優化 */
         .table-hover tbody tr:hover {
             background-color: var(--hover-bg);
         }
 
-        /* 按鈕懸停效果 */
         .btn {
             transition: all 0.2s ease-in-out;
         }
@@ -131,19 +147,19 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-        /* Badge 樣式優化 */
         .badge {
             padding: 0.5em 0.8em;
             font-weight: 500;
+            border: 2px solid #000;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
         }
 
-        /* 分隔線樣式 */
         hr {
             border-color: var(--border-color);
             opacity: 0.2;
         }
 
-        /* 滾動條美化 */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -162,48 +178,39 @@
             background: var(--text-secondary);
         }
 
-        /* 表格標題行樣式 */
         .table thead th {
             background-color: var(--bg-secondary);
             border-bottom: 2px solid var(--border-color);
         }
 
-        /* 深色背景配淺色文字 */
         .bg-dark, .bg-primary, .bg-success, .bg-danger, .bg-secondary {
             color: var(--text-primary) !important;
         }
 
-        /* 淺色背景配深色文字 */
         .bg-warning, .bg-info, .bg-light {
             color: var(--dark-text) !important;
         }
 
-        /* Badge 文字顏色調整 */
         .badge.bg-warning {
             color: var(--dark-text);
         }
 
-        /* Alert 文字顏色調整 */
         .alert-warning, .alert-info {
             color: var(--text-primary);
         }
 
-        /* 表格標題顏色調整 */
         .table thead th {
             color: var(--text-primary);
         }
 
-        /* Card header 文字顏色調整 */
         .card-header {
             color: var(--text-primary);
         }
 
-        /* 特殊背景下的文字顏色 */
         .bg-warning .text-dark {
             color: var(--dark-text) !important;
         }
 
-        /* 修正深色背景下的文字顏色 */
         .card-header.bg-light {
             color: var(--dark-text);
         }
@@ -220,40 +227,33 @@
             border-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* 修正表格中的文字顏色 */
         .table-light th,
         .table-light td {
             color: var(--dark-text);
             background-color: rgba(255, 255, 255, 0.9);
         }
 
-        /* 修正保守型選號的顏色 */
         .card-header.bg-warning {
             color: var(--dark-text);
         }
 
-        /* 修正區間分析的標題顏色 */
         .card-header.bg-light h6 {
             color: var(--dark-text);
         }
 
-        /* 修正提示文字的顏色 */
         .text-muted {
             color: var(--text-secondary) !important;
         }
 
-        /* 修正連號分析中的警告標籤 */
         .badge.bg-warning.text-dark {
             color: var(--dark-text) !important;
             font-weight: 600;
         }
 
-        /* 深色背景下的文字顏色修正 */
         .card-body {
             color: var(--text-primary);
         }
 
-        /* Alert 內文字顏色修正 */
         .alert {
             color: var(--text-primary);
         }
@@ -266,12 +266,10 @@
             color: var(--text-primary);
         }
 
-        /* 進取型選號說明文字修正 */
         .card .alert {
             color: var(--text-primary);
         }
 
-        /* 號碼分析詳情文字修正 */
         .analysis-details,
         .analysis-details h6,
         .analysis-details p,
@@ -279,16 +277,37 @@
             color: var(--text-primary);
         }
 
-        /* 表格內文字顏色修正 */
         .table {
             color: var(--text-primary);
         }
 
-        /* 特殊背景下的文字顏色例外處理 */
         .bg-warning.text-dark,
         .bg-info.text-dark,
         .bg-light.text-dark {
             color: var(--dark-text) !important;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-primary);
+            opacity: 0.5;
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
         }
     </style>
 </head>
@@ -296,7 +315,6 @@
     <div class="container mt-5">
         <h1 class="text-center mb-4">樂透分析系統</h1>
         
-        <!-- 快速選號推薦區域 -->
         <div class="card mb-4" id="recommendSection">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">快速選號推薦</h5>
@@ -349,11 +367,9 @@
                     <button class="btn btn-primary" style="width: auto;" onclick="getRecommendation()">立即推薦</button>
                 </div>
             </div>
-            <!-- 推薦結果將顯示在這裡 -->
             <div id="recommendationResult" style="display: none;"></div>
         </div>
         
-        <!-- 新增：詳細分析區域 -->
         <div class="card mb-4" id="analysisSection">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0">詳細數據分析</h5>
@@ -425,7 +441,6 @@
             <p class="mt-2">分析中，請稍候...</p>
         </div>
         
-        <!-- 資料範圍區域 -->
         <div class="card mb-4" id="dataRange">
             <div class="card-header bg-secondary text-white">
                 <h5 class="mb-0">資料範圍</h5>
@@ -454,7 +469,6 @@
                 .then(data => {
                     let html = '<div class="row">';
                     
-                    // 遍歷每種樂透類型
                     for (const [type, info] of Object.entries(data)) {
                         html += `
                             <div class="col-md-4">
@@ -571,13 +585,11 @@
         function displayBasicStats(result) {
             let html = '<div class="mt-3">';
             
-            // 分析說明
             html += '<div class="card mb-4">';
             html += '<div class="card-header bg-light"><h5 class="mb-0 text-dark">分析方法說明</h5></div>';
             html += '<div class="card-body">';
             html += '<div class="row">';
             
-            // 熱門號碼說明
             html += '<div class="col-md-6 mb-3">';
             html += '<div class="card h-100 border-danger">';
             html += '<div class="card-header bg-danger text-white">熱門號碼分析</div>';
@@ -585,7 +597,6 @@
             html += '<p class="card-text text-white">' + (result.analysis_description['熱門號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
             html += '</div></div></div>';
             
-            // 低頻號碼說明
             html += '<div class="col-md-6 mb-3">';
             html += '<div class="card h-100 border-secondary">';
             html += '<div class="card-header bg-secondary text-white">低頻號碼分析</div>';
@@ -593,7 +604,6 @@
             html += '<p class="card-text text-white">' + (result.analysis_description['低頻號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
             html += '</div></div></div>';
             
-            // 遺漏號碼說明
             html += '<div class="col-md-6 mb-3">';
             html += '<div class="card h-100 border-primary">';
             html += '<div class="card-header bg-primary text-white">遺漏號碼分析</div>';
@@ -601,7 +611,6 @@
             html += '<p class="card-text text-white">' + (result.analysis_description['遺漏號碼分析'] || '').replace(/\n/g, '<br>') + '</p>';
             html += '</div></div></div>';
             
-            // 趨勢分析說明
             html += '<div class="col-md-6 mb-3">';
             html += '<div class="card h-100" style="border-color: #8B4513;">';
             html += '<div class="card-header text-white" style="background-color: #8B4513;">趨勢分析</div>';
@@ -611,7 +620,6 @@
             
             html += '</div></div></div>';
             
-            // 基本統計摘要
             html += '<h5>基本統計摘要</h5>';
             html += '<div class="table-responsive"><table class="table table-striped">';
             html += '<thead class="table-dark"><tr><th>項目</th><th>數值</th></tr></thead>';
@@ -630,7 +638,6 @@
             </tr>`;
             html += '</tbody></table></div>';
             
-            // 熱門號碼分析
             html += '<h5 class="mt-4">熱門號碼分析</h5>';
             html += '<div class="table-responsive"><table class="table table-striped">';
             html += `<thead class="table-dark">
@@ -653,10 +660,8 @@
             });
             html += '</tbody></table></div>';
             
-            // 冷門號碼分析
             html += '<h5 class="mt-4">冷門號碼分析</h5>';
             
-            // 低頻號碼
             html += '<h6 class="mt-3">低頻號碼（出現頻率低於平均值的80%）</h6>';
             html += '<div class="table-responsive"><table class="table table-striped">';
             html += `<thead class="table-dark">
@@ -683,7 +688,6 @@
                 });
             html += '</tbody></table></div>';
             
-            // 遺漏號碼
             html += '<h6 class="mt-3">遺漏號碼（超過10期未開出）</h6>';
             html += '<div class="table-responsive"><table class="table table-striped">';
             html += `<thead class="table-dark">
@@ -716,7 +720,6 @@
         function displayIntervalAnalysis(result) {
             let html = '<div class="mt-3">';
             
-            // 區間統計
             html += '<h5>號碼分區統計</h5><div class="table-responsive"><table class="table table-striped">';
             html += `<thead class="table-dark">
                 <tr>
@@ -734,7 +737,6 @@
             });
             html += '</tbody></table></div>';
             
-            // 大小比例
             html += '<h5 class="mt-4">大小號碼比例</h5><div class="table-responsive"><table class="table table-striped">';
             html += `<thead class="table-dark">
                 <tr>
@@ -752,7 +754,6 @@
             });
             html += '</tbody></table></div>';
             
-            // 奇偶比例
             html += '<h5 class="mt-4">奇偶數比例</h5><div class="table-responsive"><table class="table table-striped">';
             html += `<thead class="table-dark">
                 <tr>
@@ -776,7 +777,6 @@
         function displayContinuityAnalysis(result) {
             let html = '<div class="mt-3">';
             
-            // 連續號碼統計
             if (result.consecutive_stats && result.consecutive_stats.length > 0) {
                 html += '<h5>連續號碼統計</h5><div class="table-responsive"><table class="table table-striped">';
                 html += `<thead class="table-dark">
@@ -796,7 +796,6 @@
                 html += '</tbody></table></div>';
             }
             
-            // 號碼間隔統計
             if (result.gap_stats && result.gap_stats.length > 0) {
                 html += '<h5 class="mt-4">號碼間隔統計</h5><div class="table-responsive"><table class="table table-striped">';
                 html += `<thead class="table-dark">
@@ -816,7 +815,6 @@
                 html += '</tbody></table></div>';
             }
             
-            // 個別號碼間隔分析
             if (result.number_gaps && result.number_gaps.length > 0) {
                 html += '<h5 class="mt-4">個別號碼間隔分析</h5><div class="table-responsive"><table class="table table-striped">';
                 html += `<thead class="table-dark">
@@ -844,7 +842,6 @@
         function displayTimeSeriesAnalysis(result) {
             let html = '<div class="mt-3">';
             
-            // 年度分析
             if (result.yearly_stats && result.yearly_stats.length > 0) {
                 html += '<h5>年度分析</h5>';
                 result.yearly_stats.forEach(stat => {
@@ -859,7 +856,6 @@
                 });
             }
             
-            // 月份分析
             if (result.monthly_stats && result.monthly_stats.length > 0) {
                 html += '<h5 class="mt-4">月份分析</h5>';
                 result.monthly_stats.forEach(stat => {
@@ -874,7 +870,6 @@
                 });
             }
             
-            // 星期分析
             if (result.weekday_stats && result.weekday_stats.length > 0) {
                 const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
                 html += '<h5 class="mt-4">星期分析</h5>';
@@ -890,7 +885,6 @@
                 });
             }
             
-            // 季節分析
             if (result.seasonal_stats && result.seasonal_stats.length > 0) {
                 html += '<h5 class="mt-4">季節分析</h5>';
                 result.seasonal_stats.forEach(stat => {
@@ -911,7 +905,6 @@
         function displayPredictionAnalysis(result) {
             let html = '<div class="mt-3">';
             
-            // 近期熱門號碼
             if (result.hot_numbers && result.hot_numbers.length > 0) {
                 html += '<h5>近期熱門號碼</h5><div class="table-responsive"><table class="table table-striped">';
                 html += `<thead class="table-dark">
@@ -931,7 +924,6 @@
                 html += '</tbody></table></div>';
             }
             
-            // 近期冷門號碼
             if (result.cold_numbers && result.cold_numbers.length > 0) {
                 html += '<h5 class="mt-4">近期冷門號碼</h5><div class="table-responsive"><table class="table table-striped">';
                 html += `<thead class="table-dark">
@@ -953,7 +945,6 @@
                 html += '</tbody></table></div>';
             }
             
-            // 號碼趨勢
             if (result.number_trends && result.number_trends.length > 0) {
                 html += '<h5 class="mt-4">號碼趨勢分析</h5><div class="table-responsive"><table class="table table-striped">';
                 html += '<thead><tr><th>號碼</th><th>趨勢</th><th>平均出現</th><th>出現範圍</th></tr></thead><tbody>';
@@ -965,7 +956,6 @@
                 html += '</tbody></table></div>';
             }
             
-            // 號碼模式
             if (result.pattern_numbers && result.pattern_numbers.length > 0) {
                 html += '<h5 class="mt-4">常見號碼模式</h5><div class="table-responsive"><table class="table table-striped">';
                 html += '<thead><tr><th>大小比例</th><th>奇偶比例</th><th>區間分布</th><th>出現次數</th><th>百分比</th></tr></thead><tbody>';
@@ -983,17 +973,14 @@
         function displayRecommendation(result) {
             let html = '<div class="card mb-4"><div class="card-body">';
             
-            // 分析說明
             html += '<div class="mb-4">';
             for (const [key, value] of Object.entries(result.analysis_description)) {
                 html += `<h6>${key}：</h6><p class="text-muted">${value.replace(/\n/g, '<br>')}</p>`;
             }
             html += '</div>';
             
-            // 推薦組合
             html += '<div class="row">';
             
-            // 平衡型
             html += '<div class="col-md-4">';
             html += '<div class="card mb-3">';
             html += '<div class="card-header bg-info text-white">平衡型選號</div>';
@@ -1015,7 +1002,6 @@
             html += '</div>';
             html += '</div></div></div>';
             
-            // 進取型
             html += '<div class="col-md-4">';
             html += '<div class="card mb-3">';
             html += '<div class="card-header bg-success text-white">進取型選號</div>';
@@ -1037,7 +1023,6 @@
             html += '</div>';
             html += '</div></div></div>';
             
-            // 保守型
             html += '<div class="col-md-4">';
             html += '<div class="card mb-3">';
             html += '<div class="card-header bg-warning">保守型選號</div>';
@@ -1059,19 +1044,14 @@
             html += '</div>';
             html += '</div></div></div>';
             
-            html += '</div>';  // row end
+            html += '</div>';  html += '</div>';
             
-            // 號碼分析詳情
             html += '<div class="mt-4">';
             
-            // 根據不同的分析方法顯示不同的內容
             const method = document.getElementById('recommendMethod').value;
             
-            // 如果是連號分析法，顯示特殊的分析表格
-            if (result.draw_analysis) {  // 連號分析法
-                html += '<div class="row">';
+            if (result.draw_analysis) {  html += '<div class="row">';
                 
-                // 連號分析說明
                 html += '<div class="col-12">';
                 html += '<h6>連號分析詳情：</h6>';
                 html += '<div class="alert alert-info">';
@@ -1083,11 +1063,9 @@
                 html += '</ul>';
                 html += '</div>';
                 
-                // 連號分布分析
                 const withSequence = result.draw_analysis.filter(d => d.sequence_count > 0);
                 const noSequence = result.draw_analysis.filter(d => d.sequence_count === 0);
                 
-                // 有連號的開獎結果
                 html += '<div class="card mb-3">';
                 html += '<div class="card-header bg-warning">';
                 html += '<h6 class="mb-0">有連號的開獎結果</h6>';
@@ -1119,7 +1097,6 @@
                 }
                 html += '</div></div></div>';
                 
-                // 連號統計摘要
                 const totalDraws = result.draw_analysis.length;
                 const drawsWithSequence = result.draw_analysis.filter(d => d.sequence_count > 0).length;
                 const sequencePercentage = ((drawsWithSequence / totalDraws) * 100).toFixed(1);
@@ -1146,10 +1123,8 @@
                 html += '</div>';
                 html += '</div>';
                 html += '</div>';
-            } else if (result.cycle_analysis) {  // 週期回歸法
-                html += '<div class="row">';
+            } else if (result.cycle_analysis) {  html += '<div class="row">';
                 
-                // 週期分析說明
                 html += '<div class="col-12">';
                 html += '<h6>週期分析說明：</h6>';
                 html += '<div class="alert alert-info">';
@@ -1172,7 +1147,6 @@
                 html += '</ul>';
                 html += '</div>';
                 
-                // 週期分析表格
                 html += '<div class="table-responsive">';
                 html += '<h6>號碼週期分析：</h6>';
                 html += '<table class="table table-sm table-hover">';
@@ -1186,7 +1160,6 @@
                 html += '<th>最長週期</th>';
                 html += '</tr></thead><tbody>';
                 
-                // 按週期狀態排序：已達週期 > 接近週期 > 未達週期
                 const sortedAnalysis = [...result.cycle_analysis].sort((a, b) => {
                     const statusOrder = { 'C1': 0, 'C2': 1, 'C3': 2 };
                     return statusOrder[a.cycle_status] - statusOrder[b.cycle_status];
@@ -1222,7 +1195,6 @@
                 });
                 html += '</tbody></table></div>';
                 
-                // 週期統計摘要
                 const totalNumbers = result.cycle_analysis.length;
                 const cycleComplete = result.cycle_analysis.filter(n => n.cycle_status === 'C1').length;
                 const cycleApproaching = result.cycle_analysis.filter(n => n.cycle_status === 'C2').length;
@@ -1246,13 +1218,11 @@
                 html += '</div>';
                 
                 html += '</div>';
-                html += '</div>'; // row end
-            } else if (method === 'interval') {  // 區間平衡法
-                // 區間分析的特殊顯示方式
-                html += '<div class="mt-4">';
+                html += '</div>'; html += '</div>';
+            } else if (method === 'interval') {  html += '<div class="mt-4">';
+                
                 html += '<h6>區間分析詳情：</h6>';
                 
-                // 區間說明
                 html += '<div class="alert alert-info mb-3">';
                 html += '<h6>區間劃分說明：</h6>';
                 html += '<ul class="mb-0">';
@@ -1264,7 +1234,6 @@
                 html += '</ul>';
                 html += '</div>';
                 
-                // 分區顯示號碼分析
                 for (let i = 1; i <= 5; i++) {
                     html += `<div class="card mb-3">`;
                     html += `<div class="card-header bg-light">`;
@@ -1280,7 +1249,6 @@
                     html += `<th>遺漏期數</th>`;
                     html += `</tr></thead><tbody>`;
                     
-                    // 過濾該區間的號碼
                     const intervalNumbers = result.number_analysis.filter(num => 
                         num.number > (i-1)*10 && num.number <= i*10
                     );
@@ -1299,12 +1267,10 @@
                     html += `</tbody></table></div></div></div>`;
                 }
                 
-                // 區間統計摘要
                 html += '<div class="alert alert-warning mt-3">';
                 html += '<h6>區間分析總結：</h6>';
                 html += '<div class="row">';
                 
-                // 計算每個區間的統計數據
                 for (let i = 1; i <= 5; i++) {
                     const intervalNumbers = result.number_analysis.filter(num => 
                         num.number > (i-1)*10 && num.number <= i*10
@@ -1319,11 +1285,10 @@
                 
                 html += '</div></div>';
                 html += '</div>';
-            } else if (method === 'odd_even') {  // 奇偶均衡法
-                html += '<div class="mt-4">';
+            } else if (method === 'odd_even') {  html += '<div class="mt-4">';
+                
                 html += '<h6>奇偶分析詳情：</h6>';
                 
-                // 奇偶說明
                 html += '<div class="alert alert-info mb-3">';
                 html += '<h6>奇偶分類說明：</h6>';
                 html += '<ul class="mb-0">';
@@ -1332,11 +1297,9 @@
                 html += '</ul>';
                 html += '</div>';
                 
-                // 分開顯示奇數和偶數
                 const oddNumbers = result.number_analysis.filter(num => num.number_type === 'O');
                 const evenNumbers = result.number_analysis.filter(num => num.number_type === 'E');
                 
-                // 奇數分析
                 html += '<div class="card mb-3">';
                 html += '<div class="card-header bg-success text-white">';
                 html += '<h6 class="mb-0">奇數分析</h6>';
@@ -1366,7 +1329,6 @@
                 
                 html += '</tbody></table></div></div></div>';
                 
-                // 偶數分析
                 html += '<div class="card mb-3">';
                 html += '<div class="card-header bg-secondary text-white">';
                 html += '<h6 class="mb-0">偶數分析</h6>';
@@ -1396,7 +1358,6 @@
                 
                 html += '</tbody></table></div></div></div>';
                 
-                // 奇偶統計摘要
                 html += '<div class="alert alert-warning mt-3">';
                 html += '<h6>奇偶分析總結：</h6>';
                 html += '<div class="row">';
@@ -1418,8 +1379,8 @@
                 
                 html += '</div></div>';
                 html += '</div>';
-            } else {  // 冷熱分析法
-                html += '<h6>號碼分析詳情：</h6>';
+            } else {  html += '<h6>號碼分析詳情：</h6>';
+                
                 html += '<div class="table-responsive"><table class="table table-sm table-striped">';
                 html += `<thead class="table-dark">
                     <tr>
@@ -1445,7 +1406,6 @@
                         typeText = num.number_type === 'O' ? '奇數' : '偶數';
                     }
                     
-                    // 添加遺漏期數的顏色標示
                     const missClass = num.missing_draws > 10 ? 'text-danger' : 
                                     num.missing_draws > 5 ? 'text-warning' : 'text-success';
                     
@@ -1500,11 +1460,9 @@
             });
         }
 
-        // 頁面載入時更新資料範圍
         document.addEventListener('DOMContentLoaded', updateDataRange);
         document.getElementById('lotteryType').addEventListener('change', updateDataRange);
 
-        // 組合模式分析
         function displayCombinationAnalysis(result) {
             let html = '<div class="analysis-section">';
             html += '<div class="alert alert-info">組合模式分析功能開發中...</div>';
@@ -1512,7 +1470,6 @@
             return html;
         }
         
-        // 號碼組合預測
         function displayCombinationPrediction(result) {
             let html = '<div class="analysis-section">';
             html += '<div class="alert alert-info">號碼組合預測功能開發中...</div>';
@@ -1520,7 +1477,6 @@
             return html;
         }
         
-        // 進階統計分析
         function displayAdvancedStatistics(result) {
             let html = '<div class="analysis-section">';
             html += '<div class="alert alert-info">進階統計分析功能開發中...</div>';
@@ -1528,7 +1484,6 @@
             return html;
         }
         
-        // 遺漏值分析
         function displayMissingValueAnalysis(result) {
             let html = '<div class="analysis-section">';
             html += '<div class="alert alert-info">遺漏值分析功能開發中...</div>';
@@ -1536,7 +1491,6 @@
             return html;
         }
         
-        // 號碼關聯網絡分析
         function displayNetworkAnalysis(result) {
             let html = '<div class="analysis-section">';
             html += '<div class="alert alert-info">號碼關聯網絡分析功能開發中...</div>';
@@ -1544,7 +1498,6 @@
             return html;
         }
         
-        // 機率分布分析
         function displayProbabilityAnalysis(result) {
             let html = '<div class="analysis-section">';
             html += '<div class="alert alert-info">機率分布分析功能開發中...</div>';
@@ -1553,5 +1506,4 @@
         }
     </script>
 </body>
-</html> 
 </html> 
