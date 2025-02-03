@@ -13,6 +13,58 @@ def get_db_connection():
 def index():
     return render_template('index.html')
 
+@app.route('/latest_draws')
+def get_latest_draws():
+    """獲取所有彩種的最新一期開獎號碼"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    latest_draws = {}
+    lottery_types = {
+        'big_lotto': '大樂透',
+        'super_lotto': '威力彩',
+        'daily_cash': '今彩539'
+    }
+    
+    try:
+        for lottery_type, name in lottery_types.items():
+            # 獲取最新一期的資料
+            cursor.execute(f"""
+                SELECT 
+                    draw_term,
+                    draw_date,
+                    draw_numbers,
+                    special_number,
+                    total_prize
+                FROM {lottery_type}
+                ORDER BY draw_term DESC
+                LIMIT 1
+            """)
+            
+            result = cursor.fetchone()
+            if result:
+                draw_numbers = result[2].split(',') if result[2] else []
+                latest_draws[lottery_type] = {
+                    'name': name,
+                    'draw_term': result[0],
+                    'draw_date': result[1],
+                    'numbers': draw_numbers,
+                    'special_number': result[3] if result[3] is not None else '',
+                    'total_prize': result[4] if result[4] is not None else ''
+                }
+        
+        return jsonify({
+            'status': 'success',
+            'data': latest_draws
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        })
+    finally:
+        conn.close()
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json()

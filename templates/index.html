@@ -309,11 +309,104 @@
             0% { transform: translateY(0); }
             100% { transform: translateY(100%); }
         }
+
+        .latest-draws-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--accent-primary);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+
+        .lottery-results {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .lottery-result {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            min-width: 250px;
+            flex: 1;
+        }
+
+        .lottery-result h3 {
+            color: var(--accent-primary);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .draw-info {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .numbers {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid var(--accent-primary);
+            font-size: 1.2em;
+            text-shadow: none;
+        }
+
+        .number.special {
+            background-color: var(--bg-secondary);
+            border: 2px solid var(--accent-warning);
+            color: var(--accent-warning);
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="text-center mb-4">樂透分析系統</h1>
+        
+        <!-- 最新開獎結果區塊 -->
+        <div id="latest-draws" class="latest-draws-container">
+            <h2>最新開獎結果</h2>
+            <div class="lottery-results">
+                <!-- 大樂透結果 -->
+                <div class="lottery-result" id="big-lotto-result">
+                    <h3>大樂透</h3>
+                    <p class="draw-info"></p>
+                    <div class="numbers"></div>
+                </div>
+                
+                <!-- 威力彩結果 -->
+                <div class="lottery-result" id="super-lotto-result">
+                    <h3>威力彩</h3>
+                    <p class="draw-info"></p>
+                    <div class="numbers"></div>
+                </div>
+                
+                <!-- 今彩539結果 -->
+                <div class="lottery-result" id="daily-cash-result">
+                    <h3>今彩539</h3>
+                    <p class="draw-info"></p>
+                    <div class="numbers"></div>
+                </div>
+            </div>
+        </div>
         
         <div class="card mb-4" id="recommendSection">
             <div class="card-header bg-primary text-white">
@@ -1503,6 +1596,59 @@
             html += '<div class="alert alert-info">機率分布分析功能開發中...</div>';
             html += '</div>';
             return html;
+        }
+
+        // 當頁面載入時獲取最新開獎資料
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchLatestDraws();
+        });
+
+        function fetchLatestDraws() {
+            fetch('/latest_draws')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateLatestDraws(data.data);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function updateLatestDraws(draws) {
+            const lotteryTypes = {
+                'big_lotto': 'big-lotto-result',
+                'super_lotto': 'super-lotto-result',
+                'daily_cash': 'daily-cash-result'
+            };
+            
+            for (const [type, elementId] of Object.entries(lotteryTypes)) {
+                const draw = draws[type];
+                if (draw) {
+                    const element = document.getElementById(elementId);
+                    const drawInfo = element.querySelector('.draw-info');
+                    const numbersDiv = element.querySelector('.numbers');
+                    
+                    // 更新開獎資訊
+                    drawInfo.textContent = `第 ${draw.draw_term} 期 (${draw.draw_date})`;
+                    
+                    // 更新號碼
+                    numbersDiv.innerHTML = '';
+                    draw.numbers.forEach(number => {
+                        const numberSpan = document.createElement('span');
+                        numberSpan.className = 'number';
+                        numberSpan.textContent = number;
+                        numbersDiv.appendChild(numberSpan);
+                    });
+                    
+                    // 如果有特別號，加入特別號
+                    if (draw.special_number) {
+                        const specialNumber = document.createElement('span');
+                        specialNumber.className = 'number special';
+                        specialNumber.textContent = draw.special_number;
+                        numbersDiv.appendChild(specialNumber);
+                    }
+                }
+            }
         }
     </script>
 </body>

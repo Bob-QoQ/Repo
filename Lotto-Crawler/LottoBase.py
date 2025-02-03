@@ -13,16 +13,47 @@ class Lotto():
         lastest_draw = self.getLastDraw()
         currentTime = datetime.now()
 
-        print(f'Lastest draw: {lastest_draw}')
+        print(f'最新一期: {lastest_draw["draw"] if lastest_draw else None}')
 
-        ybegin, mbegin = (103, 1) if lastest_draw == None or force_update else (lastest_draw['year'], lastest_draw['month'])
+        # 如果沒有資料或強制更新，則從103年1月開始爬取
+        if lastest_draw == None or force_update:
+            ybegin, mbegin = (103, 1)
+        else:
+            # 獲取最新一期的日期，從該日期所在月份開始爬取
+            ybegin = lastest_draw['year']
+            mbegin = lastest_draw['month']
+            
+            # 先爬取當前月份的資料來檢查是否有更新
+            current_month_data = self.crawlApi(ybegin, mbegin)
+            if current_month_data:
+                data = json.loads(current_month_data)
+                content = data.get("content", {})
+                latest_period = None
+                
+                # 根據不同的彩票類型獲取最新期數
+                if "lotto649Res" in content:
+                    draws = content["lotto649Res"]
+                elif "daily539Res" in content:
+                    draws = content["daily539Res"]
+                elif "superLotto638Res" in content:
+                    draws = content["superLotto638Res"]
+                
+                if draws and len(draws) > 0:
+                    latest_period = draws[0]["period"]
+                    
+                if latest_period and int(latest_period) <= int(lastest_draw['draw']):
+                    print('資料已是最新，無需更新')
+                    return self
+                else:
+                    print(f'發現新資料，最新期數: {latest_period}')
+
         yend, mend = (currentTime.year - 1911, currentTime.month)
 
-        print(f'Start crawl from {ybegin}/{mbegin} to {yend}/{mend}')
+        print(f'開始爬取資料: 從 {ybegin}/{mbegin} 到 {yend}/{mend}')
 
         for y in range(ybegin, yend + 1):
             for m in range(1, 13):
-                if y == ybegin and m < mbegin :
+                if y == ybegin and m < mbegin:
                     continue
                 elif y == yend and m > mend:
                     continue

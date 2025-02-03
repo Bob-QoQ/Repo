@@ -9,16 +9,23 @@ class BigLotto(Lotto):
         self.default_filename = 'BigLotto.json'
 
     def crawlApi(self, year, month):
-        print(f'Crawl {year}/{month}')
+        print(f'爬取 {year}/{month} 的資料')
 
         if year < 103 or year > datetime.now().year - 1911 or month < 1 or month > 12:
             return None
 
         requestApi = f'{self.api}?period&month={year + 1911}-{"0" if month < 10 else ""}{month}&pageNum=1&pageSize=50'
 
-        # print('Request url: <' + requestApi + '>')
-
-        return requests.get(requestApi).content
+        try:
+            response = requests.get(requestApi)
+            if response.status_code == 200:
+                return response.content
+            else:
+                print(f'請求失敗: {response.status_code}')
+                return None
+        except Exception as e:
+            print(f'爬取資料時發生錯誤: {str(e)}')
+            return None
 
     def parse(self, jsonString):
         data = json.loads(jsonString)
