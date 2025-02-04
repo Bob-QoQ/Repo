@@ -1,90 +1,118 @@
 import sqlite3
 import json
-import os
 
-def create_tables(cursor):
-    # 建立大樂透表
+def create_tables(conn):
+    cursor = conn.cursor()
+    
+    # 建立大樂透資料表
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS big_lotto (
-        draw_term TEXT PRIMARY KEY,
-        draw_date TEXT,
-        draw_numbers TEXT,
-        special_number TEXT,
-        total_prize INTEGER
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        draw_term TEXT NOT NULL,
+        draw_date TEXT NOT NULL,
+        num1 INTEGER NOT NULL,
+        num2 INTEGER NOT NULL,
+        num3 INTEGER NOT NULL,
+        num4 INTEGER NOT NULL,
+        num5 INTEGER NOT NULL,
+        num6 INTEGER NOT NULL,
+        special_num INTEGER NOT NULL,
+        total_sales INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
-
-    # 建立威力彩表
+    
+    # 建立威力彩資料表
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS super_lotto (
-        draw_term TEXT PRIMARY KEY,
-        draw_date TEXT,
-        draw_numbers TEXT,
-        special_number TEXT,
-        total_prize INTEGER
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        draw_term TEXT NOT NULL,
+        draw_date TEXT NOT NULL,
+        num1 INTEGER NOT NULL,
+        num2 INTEGER NOT NULL,
+        num3 INTEGER NOT NULL,
+        num4 INTEGER NOT NULL,
+        num5 INTEGER NOT NULL,
+        num6 INTEGER NOT NULL,
+        special_num INTEGER NOT NULL,
+        total_sales INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
-
-    # 建立今彩539表
+    
+    # 修改今彩539資料表结构
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS daily_cash (
-        draw_term TEXT PRIMARY KEY,
-        draw_date TEXT,
-        draw_numbers TEXT,
-        special_number TEXT,
-        total_prize INTEGER
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        draw_term TEXT NOT NULL,
+        draw_date TEXT NOT NULL,
+        num1 INTEGER NOT NULL,
+        num2 INTEGER NOT NULL,
+        num3 INTEGER NOT NULL,
+        num4 INTEGER NOT NULL,
+        num5 INTEGER NOT NULL,
+        total_sales INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
+    
+    conn.commit()
 
-def import_json_to_db(cursor, json_file, table_name):
-    with open(json_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-        
-    for draw_term, draw_info in data.items():
-        draw_numbers = ','.join(str(x) for x in draw_info['draw_order_nums'])
-        special_number = str(draw_info.get('bonus_num', ''))
-        
-        # 格式化日期
-        date_parts = draw_info['date'].split('/')
-        formatted_date = f"{int(date_parts[0]) + 1911}/{date_parts[1]}/{date_parts[2]}"
-        
-        cursor.execute(f'''
-        INSERT OR REPLACE INTO {table_name}
-        (draw_term, draw_date, draw_numbers, special_number, total_prize)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (draw_term, formatted_date, draw_numbers, special_number, draw_info.get('price', 0)))
-
-def main():
-    # 確保data目錄存在
-    if not os.path.exists('data'):
-        print("Error: 'data' directory not found")
-        return
-
-    # 連接到資料庫
+def import_data():
     conn = sqlite3.connect('lottery.db')
-    cursor = conn.cursor()
-
-    # 建立資料表
-    create_tables(cursor)
-
-    # 匯入資料
-    json_files = {
-        'big_lotto': 'data/BigLotto.json',
-        'super_lotto': 'data/SuperLotto.json',
-        'daily_cash': 'data/DailyCash.json'
-    }
-
-    for table_name, json_file in json_files.items():
-        if os.path.exists(json_file):
-            print(f"Importing {json_file} to {table_name}...")
-            import_json_to_db(cursor, json_file, table_name)
-        else:
-            print(f"Warning: {json_file} not found")
-
-    # 提交更改並關閉連接
+    create_tables(conn)
+    
+    # 匯入大樂透資料
+    with open('Lotto-Crawler/data/BigLotto.json', 'r', encoding='utf-8') as f:
+        big_lotto_data = json.load(f)
+        cursor = conn.cursor()
+        # 遍歷字典中的每個值
+        for item in big_lotto_data.values():  # 修改這裡
+            nums = item['draw_order_nums']
+            cursor.execute('''
+            INSERT INTO big_lotto (draw_term, draw_date, num1, num2, num3, num4, num5, num6, special_num, total_sales)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                item['draw'],
+                item['date'],
+                nums[0], nums[1], nums[2], nums[3], nums[4], nums[5],
+                item['bonus_num'],
+                item.get('price', None)  # 修改這裡，因為欄位名稱是 'price' 而不是 'total_sales'
+            ))
+    
+    # 匯入威力彩資料
+    with open('Lotto-Crawler/data/SuperLotto.json', 'r', encoding='utf-8') as f:
+        super_lotto_data = json.load(f)
+        for item in super_lotto_data.values():  # 修改這裡
+            nums = item['draw_order_nums']
+            cursor.execute('''
+            INSERT INTO super_lotto (draw_term, draw_date, num1, num2, num3, num4, num5, num6, special_num, total_sales)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                item['draw'],
+                item['date'],
+                nums[0], nums[1], nums[2], nums[3], nums[4], nums[5],
+                item['bonus_num'],
+                item.get('price', None)  # 修改這裡
+            ))
+    
+    # 修改今彩539資料导入逻辑
+    with open('Lotto-Crawler/data/DailyCash.json', 'r', encoding='utf-8') as f:
+        daily_cash_data = json.load(f)
+        for item in daily_cash_data.values():
+            nums = item['draw_order_nums'][:5]  # 只取前5个号码
+            cursor.execute('''
+            INSERT INTO daily_cash (draw_term, draw_date, num1, num2, num3, num4, num5, total_sales)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                item['draw'],
+                item['date'],
+                nums[0], nums[1], nums[2], nums[3], nums[4],
+                item.get('price', None)
+            ))
+    
     conn.commit()
     conn.close()
-    print("Database creation and data import completed successfully!")
 
-if __name__ == "__main__":
-    main() 
+if __name__ == '__main__':
+    import_data() 

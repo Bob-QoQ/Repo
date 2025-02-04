@@ -1,0 +1,19 @@
+ac352f1 - Bob-QoQ, 75 minutes ago : DB 更新
+20c577c - Bob-QoQ, 18 hours ago : 新增最新開獎結果顯示功能： 1. 新增最新開獎號碼的API路由 2. 建立新的資料庫結構 3. 新增開獎結果顯示區塊和樣式
+eb4d057 - Bob-QoQ, 3 days ago : fix crate db
+2898d72 - Bob-QoQ, 8 days ago : DB 更新
+83d7cfa - Bob-QoQ, 11 days ago : style: 優化深色模式的視覺效果和文字可讀性
+f94c2f0 - Bob-QoQ, 11 days ago : style: 優化分析方法的顯示介面
+025bfdd - Bob-QoQ, 11 days ago : style: 優化使用者介面和分析說明
+774ad0d - Bob-QoQ, 11 days ago : style: 優化介面視覺效果和使用者體驗
+0bef1c5 - Bob-QoQ, 11 days ago : feat: 新增週期回歸法和連號分析法
+333cef7 - Bob-QoQ, 12 days ago : refactor: 重新設計頁面布局，優化使用者體驗
+83503cd - Bob-QoQ, 12 days ago : feat: 優化使用者介面和功能展示
+477fb9d - Bob-QoQ, 2 weeks ago : feat: 新增進階統計分析功能
+4abe50e - Bob-QoQ, 2 weeks ago : feat: 新增組合模式分析功能
+3030b32 - Bob-QoQ, 2 weeks ago : feat: 新增預測分析功能
+d98dd7f - Bob-QoQ, 2 weeks ago : feat: 新增區間分析和連續性分析功能
+988252b - Bob-QoQ, 2 weeks ago : remove 123.txt
+35ecc18 - Bob-QoQ, 2 weeks ago : 123
+4c79cc0 - Bob-QoQ, 2 weeks ago : Add files via upload
+60041db - Bob-QoQ, 2 weeks ago : Initial commit
