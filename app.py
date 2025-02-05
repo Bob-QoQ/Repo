@@ -1,129 +1,396 @@
 from flask import Flask, render_template, request, jsonify
-from lottery_analysis import LotteryAnalysis
 import sqlite3
+from datetime import datetime
+from lottery_analysis import analyze_lottery, analyze_repeat_numbers, analyze_special_numbers, analyze_combination_numbers, analyze_prediction_numbers, analyze_route_numbers, analyze_repetition_numbers, analyze_consecutive_numbers, analyze_numeric_numbers, analyze_distribution_numbers
 
 app = Flask(__name__)
-analysis = LotteryAnalysis()
 
-def get_db_connection():
-    """獲取資料庫連接"""
-    return sqlite3.connect('lottery.db')
+def get_data_range():
+    conn = sqlite3.connect('lottery.db')
+    cursor = conn.cursor()
+    
+    ranges = {}
+    
+    # 獲取大樂透資料範圍
+    cursor.execute('''
+        SELECT MIN(draw_date), MAX(draw_date), 
+               MIN(draw_term), MAX(draw_term),
+               COUNT(draw_term)
+        FROM big_lotto
+    ''')
+    min_date, max_date, min_term, max_term, total_count = cursor.fetchone()
+    ranges['big_lotto'] = {
+        'start': min_date, 
+        'end': max_date,
+        'start_term': min_term,
+        'end_term': max_term,
+        'total': total_count
+    }
+    
+    # 獲取威力彩資料範圍
+    cursor.execute('''
+        SELECT MIN(draw_date), MAX(draw_date),
+               MIN(draw_term), MAX(draw_term),
+               COUNT(draw_term)
+        FROM super_lotto
+    ''')
+    min_date, max_date, min_term, max_term, total_count = cursor.fetchone()
+    ranges['super_lotto'] = {
+        'start': min_date, 
+        'end': max_date,
+        'start_term': min_term,
+        'end_term': max_term,
+        'total': total_count
+    }
+    
+    # 獲取今彩539資料範圍
+    cursor.execute('''
+        SELECT MIN(draw_date), MAX(draw_date),
+               MIN(draw_term), MAX(draw_term),
+               COUNT(draw_term)
+        FROM daily_cash
+    ''')
+    min_date, max_date, min_term, max_term, total_count = cursor.fetchone()
+    ranges['daily_cash'] = {
+        'start': min_date, 
+        'end': max_date,
+        'start_term': min_term,
+        'end_term': max_term,
+        'total': total_count
+    }
+    
+    conn.close()
+    return ranges
+
+def get_latest_draws():
+    conn = sqlite3.connect('lottery.db')
+    cursor = conn.cursor()
+    
+    # 獲取大樂透最新三期
+    cursor.execute('''
+        SELECT draw_term, draw_date, num1, num2, num3, num4, num5, num6, special_num 
+        FROM big_lotto 
+        ORDER BY draw_term DESC 
+        LIMIT 3
+    ''')
+    big_lotto = cursor.fetchall()
+    
+    # 獲取威力彩最新三期
+    cursor.execute('''
+        SELECT draw_term, draw_date, num1, num2, num3, num4, num5, num6, special_num 
+        FROM super_lotto 
+        ORDER BY draw_term DESC 
+        LIMIT 3
+    ''')
+    super_lotto = cursor.fetchall()
+    
+    # 獲取今彩539最新三期
+    cursor.execute('''
+        SELECT draw_term, draw_date, num1, num2, num3, num4, num5 
+        FROM daily_cash 
+        ORDER BY draw_term DESC 
+        LIMIT 3
+    ''')
+    daily_cash = cursor.fetchall()
+    
+    conn.close()
+
+    # 對每一期的號碼進行排序
+    sorted_draws = {
+        'big_lotto': [],
+        'super_lotto': [],
+        'daily_cash': []
+    }
+
+    # 處理大樂透資料
+    for draw in big_lotto:
+        draw_term, draw_date = draw[0], draw[1]
+        numbers = sorted(draw[2:8])  # 排序前6個號碼
+        special_num = draw[8]        # 特別號不參與排序
+        sorted_draws['big_lotto'].append((draw_term, draw_date) + tuple(numbers) + (special_num,))
+
+    # 處理威力彩資料
+    for draw in super_lotto:
+        draw_term, draw_date = draw[0], draw[1]
+        numbers = sorted(draw[2:8])  # 排序前6個號碼
+        special_num = draw[8]        # 特別號不參與排序
+        sorted_draws['super_lotto'].append((draw_term, draw_date) + tuple(numbers) + (special_num,))
+
+    # 處理今彩539資料
+    for draw in daily_cash:
+        draw_term, draw_date = draw[0], draw[1]
+        numbers = sorted(draw[2:7])  # 排序5個號碼
+        sorted_draws['daily_cash'].append((draw_term, draw_date) + tuple(numbers))
+
+    return sorted_draws
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    latest_draws = get_latest_draws()
+    data_ranges = get_data_range()
+    return render_template('index.html', draws=latest_draws, ranges=data_ranges)
 
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    data = request.get_json()
-    lottery_type = data.get('lottery_type', 'big_lotto')
-    analysis_type = data.get('analysis_type', 'basic')
-    periods = data.get('periods')
-    
-    if periods:
-        try:
-            periods = int(periods)
-            if periods <= 0:
-                return jsonify({'error': '期數必須大於 0'})
-        except ValueError:
-            return jsonify({'error': '請輸入有效的期數'})
-    
+@app.route('/api/analyze/<lottery_type>')
+def analyze(lottery_type):
     try:
-        if analysis_type == 'basic':
-            result = analysis.basic_statistics(lottery_type, periods)
-        elif analysis_type == 'interval':
-            result = analysis.interval_analysis(lottery_type, periods)
-        elif analysis_type == 'continuity':
-            result = analysis.continuity_analysis(lottery_type, periods)
-        elif analysis_type == 'time_series':
-            result = analysis.time_series_analysis(lottery_type, periods)
-        elif analysis_type == 'prediction':
-            result = analysis.prediction_analysis(lottery_type, periods)
-        elif analysis_type == 'recommend':
-            result = analysis.recommend_numbers(lottery_type, periods)
-        elif analysis_type == 'combination':
-            result = analysis.combination_pattern_analysis(lottery_type, periods)
-        elif analysis_type == 'combination_prediction':
-            result = analysis.combination_prediction(lottery_type, periods)
-        elif analysis_type == 'advanced_statistics':
-            result = analysis.advanced_statistics(lottery_type, periods)
-        elif analysis_type == 'missing_value':
-            result = analysis.missing_value_analysis(lottery_type, periods)
-        elif analysis_type == 'network':
-            result = analysis.network_analysis(lottery_type, periods)
-        elif analysis_type == 'probability':
-            result = analysis.probability_distribution_analysis(lottery_type, periods)
-        else:
-            return jsonify({'error': '無效的分析類型'})
+        periods = request.args.get('periods', default=50, type=int)
         
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-@app.route('/data_range')
-def get_data_range():
-    """獲取所有樂透類型的資料範圍"""
-    lottery_types = ['big_lotto', 'super_lotto', 'daily_cash']
-    lottery_names = {
-        'big_lotto': '大樂透',
-        'super_lotto': '威力彩',
-        'daily_cash': '今彩539'
-    }
-    
-    ranges = {}
-    for lottery_type in lottery_types:
-        conn = get_db_connection()
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
         cursor = conn.cursor()
         
-        # 獲取每種樂透的資料範圍
-        cursor.execute(f"""
-            SELECT 
-                MIN(draw_date) as start_date,
-                MAX(draw_date) as end_date,
-                MAX(draw_term) as latest_term,
-                COUNT(DISTINCT draw_term) as total_draws
-            FROM {lottery_type}
-        """)
-        result = cursor.fetchone()
-        
-        ranges[lottery_type] = {
-            'name': lottery_names[lottery_type],
-            'start_date': result[0],
-            'end_date': result[1],
-            'latest_term': result[2],
-            'total_draws': result[3]
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
         }
         
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
         conn.close()
-    
-    return jsonify(ranges)
-
-@app.route('/recommend', methods=['POST'])
-def recommend():
-    try:
-        data = request.get_json()
-        lottery_type = data.get('lottery_type', 'big_lotto')
-        periods = data.get('periods')
-        method = data.get('method', 'hot_cold')
         
-        analyzer = LotteryAnalysis()
-        result = analyzer.recommend_by_method(lottery_type, method, periods)
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
         
-        return jsonify(result)
+        results = analyze_lottery(lottery_type, periods)
+        return jsonify(results)
     except Exception as e:
+        print(f"Error in analyze: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/recommend_from_hot_cold', methods=['POST'])
-def recommend_from_hot_cold():
-    data = request.get_json()
-    lottery_type = data.get('lottery_type', 'big_lotto')
-    periods = data.get('periods')
-    
+@app.route('/api/analyze/repeat/<lottery_type>')
+def analyze_repeat(lottery_type):
     try:
-        result = analysis.recommend_from_hot_cold(lottery_type, periods)
-        return jsonify(result)
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_repeat_numbers(lottery_type, periods)
+        return jsonify(results)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        print(f"Error in analyze_repeat: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/special/<lottery_type>')
+def analyze_special(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_special_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_special: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/combination/<lottery_type>')
+def analyze_combination(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_combination_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_combination: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/prediction/<lottery_type>')
+def analyze_prediction(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_prediction_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_prediction: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/route/<lottery_type>')
+def analyze_route(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_route_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_route: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/repetition/<lottery_type>')
+def analyze_repetition(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_repetition_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_repetition: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/consecutive/<lottery_type>')
+def analyze_consecutive(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_consecutive_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_consecutive: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/numeric/<lottery_type>')
+def analyze_numeric(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_numeric_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_numeric: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyze/distribution/<lottery_type>')
+def analyze_distribution(lottery_type):
+    try:
+        periods = request.args.get('periods', default=50, type=int)
+        
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_map = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }
+        cursor.execute(f'SELECT COUNT(*) FROM {table_map[lottery_type]}')
+        max_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過實際期數，則使用實際最大期數
+        periods = min(periods, max_periods)
+        
+        results = analyze_distribution_numbers(lottery_type, periods)
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error in analyze_distribution: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 

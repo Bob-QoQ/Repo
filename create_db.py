@@ -61,11 +61,16 @@ def create_tables(conn):
 def import_data():
     conn = sqlite3.connect('lottery.db')
     create_tables(conn)
+    cursor = conn.cursor()
+    
+    # 清空現有表格
+    cursor.execute('DELETE FROM big_lotto')
+    cursor.execute('DELETE FROM super_lotto')
+    cursor.execute('DELETE FROM daily_cash')
     
     # 匯入大樂透資料
-    with open('Lotto-Crawler/data/BigLotto.json', 'r', encoding='utf-8') as f:
+    with open('data/BigLotto.json', 'r', encoding='utf-8') as f:
         big_lotto_data = json.load(f)
-        cursor = conn.cursor()
         # 遍歷字典中的每個值
         for item in big_lotto_data.values():  # 修改這裡
             nums = item['draw_order_nums']
@@ -81,7 +86,7 @@ def import_data():
             ))
     
     # 匯入威力彩資料
-    with open('Lotto-Crawler/data/SuperLotto.json', 'r', encoding='utf-8') as f:
+    with open('data/SuperLotto.json', 'r', encoding='utf-8') as f:
         super_lotto_data = json.load(f)
         for item in super_lotto_data.values():  # 修改這裡
             nums = item['draw_order_nums']
@@ -96,8 +101,8 @@ def import_data():
                 item.get('price', None)  # 修改這裡
             ))
     
-    # 修改今彩539資料导入逻辑
-    with open('Lotto-Crawler/data/DailyCash.json', 'r', encoding='utf-8') as f:
+    # 匯入今彩539資料
+    with open('data/DailyCash.json', 'r', encoding='utf-8') as f:
         daily_cash_data = json.load(f)
         for item in daily_cash_data.values():
             nums = item['draw_order_nums'][:5]  # 只取前5个号码
