@@ -2,6 +2,13 @@ from flask import Flask, render_template, request, jsonify
 import sqlite3
 from datetime import datetime
 from lottery_analysis import analyze_lottery, analyze_repeat_numbers, analyze_special_numbers, analyze_combination_numbers, analyze_prediction_numbers, analyze_route_numbers, analyze_repetition_numbers, analyze_consecutive_numbers, analyze_numeric_numbers, analyze_distribution_numbers
+from lottery_recommendation import (
+    get_quick_picks,
+    get_hot_combinations,
+    get_cold_combinations,
+    get_balanced_combinations,
+    get_lucky_numbers
+)
 
 app = Flask(__name__)
 
@@ -390,6 +397,40 @@ def analyze_distribution(lottery_type):
         return jsonify(results)
     except Exception as e:
         print(f"Error in analyze_distribution: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recommend/<lottery_type>')
+def get_recommendations(lottery_type):
+    try:
+        # 獲取推薦參數
+        recommendation_type = request.args.get('type', 'quick')  # quick, hot, cold, balanced, lucky
+        periods = request.args.get('periods', default=50, type=int)
+        numbers_count = request.args.get('count', default=5, type=int)  # 要推薦幾組號碼
+        
+        # 根據不同的推薦類型調用對應的函數
+        if recommendation_type == 'quick':
+            results = get_quick_picks(lottery_type, numbers_count)
+        elif recommendation_type == 'hot':
+            results = get_hot_combinations(lottery_type, periods, numbers_count)
+        elif recommendation_type == 'cold':
+            results = get_cold_combinations(lottery_type, periods, numbers_count)
+        elif recommendation_type == 'balanced':
+            results = get_balanced_combinations(lottery_type, periods, numbers_count)
+        elif recommendation_type == 'lucky':
+            birth_date = request.args.get('birth_date', '')
+            lucky_numbers = request.args.get('lucky_numbers', '').split(',')
+            results = get_lucky_numbers(lottery_type, birth_date, lucky_numbers, numbers_count)
+        else:
+            return jsonify({'error': '不支援的推薦類型'}), 400
+            
+        return jsonify({
+            'lottery_type': lottery_type,
+            'recommendation_type': recommendation_type,
+            'recommendations': results
+        })
+        
+    except Exception as e:
+        print(f"Error in get_recommendations: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

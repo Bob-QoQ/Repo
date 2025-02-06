@@ -201,7 +201,8 @@
         }
         
         .analysis-button {
-            padding: 8px 16px;
+            padding: 10px 15px;  /* 減少內邊距 */
+            font-size: 14px;     /* 減小字體大小 */
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -412,6 +413,10 @@
                 font-size: 1.1em;
                 color: #4CAF50;
             }
+            
+            .recommendation-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
         
         /* 更小螢幕的調整 */
@@ -432,6 +437,10 @@
             .close-button {
                 top: 10px;
                 right: 10px;
+            }
+            
+            .recommendation-row {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -508,21 +517,20 @@
         }
         
         .analysis-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            width: 100%;
         }
         
         .button-group {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
+            display: contents;
         }
         
         .analysis-button {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             padding: 12px 20px;
             font-size: 16px;
@@ -532,6 +540,7 @@
             color: #ffffff;
             cursor: pointer;
             transition: all 0.3s ease;
+            width: 100%;
         }
         
         .analysis-button:hover {
@@ -540,7 +549,225 @@
         }
         
         .analysis-button i {
-            font-size: 18px;
+            font-size: 16px;     /* 減小圖標大小 */
+        }
+
+        /* 推薦系統樣式 */
+        .recommendation-controls {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .recommendation-title {
+            color: #4CAF50;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .recommendation-buttons {
+            display: grid;
+            gap: 20px;
+        }
+
+        .recommendation-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3d3d3d;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .recommendation-button:hover {
+            background-color: #4CAF50;
+            transform: translateY(-2px);
+        }
+
+        .lucky-number-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .lucky-number-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            background-color: #2d2d2d;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            color: #888;
+        }
+
+        /* 推薦結果樣式 */
+        .recommendation-results {
+            display: grid;
+            gap: 15px;
+        }
+
+        .recommendation-item {
+            background-color: #3d3d3d;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .recommendation-numbers {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .recommendation-reason {
+            color: #888;
+            margin-top: 10px;
+        }
+
+        .recommendation-confidence {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .recommendation-details {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        /* 在 style 標籤中添加或修改以下樣式 */
+        .analysis-input[type="date"] {
+            background-color: #3d3d3d;
+            color: #ffffff;
+            border: 1px solid #4CAF50;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        /* 修改日期選擇器的下拉箭頭顏色 */
+        .analysis-input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        /* 確保日期輸入框的文字顏色在所有瀏覽器中都是白色 */
+        .analysis-input[type="date"]::-webkit-datetime-edit-text,
+        .analysis-input[type="date"]::-webkit-datetime-edit-month-field,
+        .analysis-input[type="date"]::-webkit-datetime-edit-day-field,
+        .analysis-input[type="date"]::-webkit-datetime-edit-year-field {
+            color: #ffffff;
+        }
+
+        /* 修改日期輸入框的預設文字顏色 */
+        .analysis-input[type="date"]::placeholder {
+            color: #888;
+        }
+
+        /* 修改生日日期輸入區域 */
+        .date-picker-wrapper {
+            position: relative;
+        }
+
+        .date-picker-wrapper i {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+        }
+
+        /* 日期選擇器包裝容器 */
+        .date-picker-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .date-picker-wrapper i {
+            position: absolute;
+            right: 10px;
+            color: #4CAF50;
+            pointer-events: none;
+        }
+
+        /* 日期輸入框樣式 */
+        .analysis-input[type="date"] {
+            width: 100%;
+            background-color: #3d3d3d;
+            color: #ffffff;
+            border: 1px solid #4CAF50;
+            padding: 8px 30px 8px 8px;  /* 右側留出空間給圖標 */
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* 隱藏原生的日期選擇器圖標 */
+        .analysis-input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+        }
+
+        /* 確保日期文字顏色在所有瀏覽器中都是白色 */
+        .analysis-input[type="date"]::-webkit-datetime-edit {
+            color: #ffffff;
+        }
+
+        .analysis-input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+            color: #ffffff;
+        }
+
+        /* 修改推薦系統樣式 */
+        .recommendation-basic {
+            margin-bottom: 20px;
+        }
+
+        .recommendation-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .lucky-number-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .lucky-button {
+            width: 100%;
+            margin-top: 15px;
         }
     </style>
 
@@ -556,7 +783,7 @@
         <button class="tab-button" onclick="showLottery('daily-cash')">今彩539</button>
     </div>
     
-    <!-- 統一的回測期數輸入 -->
+    <!-- 統一的回測期數輸入和分析按鈕 -->
     <div class="analysis-controls">
         <div class="analysis-header">
             <div class="analysis-title">分析工具</div>
@@ -566,48 +793,110 @@
                        placeholder="預設50期" min="1" max="{{ ranges.big_lotto.total }}" value="50">
             </div>
         </div>
-        <!-- 將分析按鈕移到這裡 -->
-        <div class="analysis-buttons">
-            <div class="button-group">
-                <button onclick="showFrequencyAnalysis()" class="analysis-button">
-                    <i class="fas fa-chart-bar"></i>
-                    號碼頻率分析
-                </button>
-                <button onclick="showRepeatAnalysis()" class="analysis-button">
-                    <i class="fas fa-sync"></i>
-                    號碼重複分析
-                </button>
-                <button onclick="showSpecialAnalysis()" class="analysis-button">
-                    <i class="fas fa-star"></i>
-                    特殊號碼分析
-                </button>
-                <button onclick="showCombinationAnalysis()" class="analysis-button">
-                    <i class="fas fa-puzzle-piece"></i>
-                    號碼組合分析
-                </button>
-            </div>
-            <div class="button-group">
-                <button onclick="showPredictionAnalysis()" class="analysis-button">
-                    <i class="fas fa-magic"></i>
-                    號碼預測分析
-                </button>
-                <button onclick="showRouteAnalysis()" class="analysis-button">
-                    <i class="fas fa-route"></i>
-                    路數分析
-                </button>
-                <button onclick="showConsecutiveAnalysis()" class="analysis-button">
-                    <i class="fas fa-sort-numeric-up"></i>
-                    連號分析
-                </button>
-                <button onclick="showDistributionAnalysis()" class="analysis-button">
-                    <i class="fas fa-chart-pie"></i>
-                    號碼分布分析
-                </button>
+        <div class="analysis-content">
+            <div class="analysis-buttons">
+                <div class="button-group">
+                    <button onclick="showFrequencyAnalysis()" class="analysis-button">
+                        <i class="fas fa-chart-bar"></i>
+                        號碼頻率分析
+                    </button>
+                    <button onclick="showRepeatAnalysis()" class="analysis-button">
+                        <i class="fas fa-sync"></i>
+                        號碼重複分析
+                    </button>
+                    <button onclick="showSpecialAnalysis()" class="analysis-button">
+                        <i class="fas fa-star"></i>
+                        特殊號碼分析
+                    </button>
+                    <button onclick="showCombinationAnalysis()" class="analysis-button">
+                        <i class="fas fa-puzzle-piece"></i>
+                        號碼組合分析
+                    </button>
+                </div>
+                <div class="button-group">
+                    <button onclick="showPredictionAnalysis()" class="analysis-button">
+                        <i class="fas fa-magic"></i>
+                        號碼預測分析
+                    </button>
+                    <button onclick="showRouteAnalysis()" class="analysis-button">
+                        <i class="fas fa-route"></i>
+                        路數分析
+                    </button>
+                    <button onclick="showConsecutiveAnalysis()" class="analysis-button">
+                        <i class="fas fa-sort-numeric-up"></i>
+                        連號分析
+                    </button>
+                    <button onclick="showDistributionAnalysis()" class="analysis-button">
+                        <i class="fas fa-chart-pie"></i>
+                        號碼分布分析
+                    </button>
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- 移除原本的分析按鈕區域 -->
+    <!-- 號碼推薦系統 -->
+    <div class="analysis-controls">
+        <div class="analysis-header">
+            <div class="analysis-title">號碼推薦系統</div>
+            <div class="period-input">
+                <label for="recommendation-count">推薦組數</label>
+                <input type="number" id="recommendation-count" class="analysis-input" 
+                       placeholder="預設5組" min="1" max="10" value="5">
+            </div>
+        </div>
+        <div class="analysis-content">
+            <!-- 基本推薦按鈕 -->
+            <div class="recommendation-basic">
+                <div class="recommendation-row">
+                    <button onclick="getQuickPicks()" class="analysis-button">
+                        <i class="fas fa-random"></i>
+                        快速選號
+                    </button>
+                    <button onclick="getHotCombinations()" class="analysis-button">
+                        <i class="fas fa-fire"></i>
+                        熱門組合
+                    </button>
+                    <button onclick="getColdCombinations()" class="analysis-button">
+                        <i class="fas fa-snowflake"></i>
+                        冷門組合
+                    </button>
+                    <button onclick="getBalancedCombinations()" class="analysis-button">
+                        <i class="fas fa-balance-scale"></i>
+                        平衡組合
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 幸運號碼區塊 -->
+            <div class="lucky-number-section">
+                <div class="lucky-number-inputs">
+                    <div class="input-group">
+                        <label for="birth-date">生日日期</label>
+                        <div class="date-picker-wrapper">
+                            <input type="date" 
+                                   id="birth-date" 
+                                   class="analysis-input"
+                                   max="2025-12-31">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="lucky-numbers">幸運數字</label>
+                        <input type="text" 
+                               id="lucky-numbers" 
+                               class="analysis-input" 
+                               placeholder="請輸入數字，用逗號分隔">
+                    </div>
+                </div>
+                <button onclick="getLuckyNumbers()" class="analysis-button lucky-button">
+                    <i class="fas fa-star"></i>
+                    幸運號碼
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 資料範圍區塊 -->
     <div class="section-container">
         <div class="section-title">資料範圍統計</div>
@@ -793,6 +1082,15 @@
             <span class="close-button" onclick="closeDistributionModal()">&times;</span>
             <div class="modal-title">號碼分布分析結果 (回測<span id="distribution-periods-value">50</span>期)</div>
             <div class="distribution-stats" id="distribution-stats"></div>
+        </div>
+    </div>
+
+    <!-- 添加推薦結果彈出視窗 -->
+    <div id="recommendation-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeRecommendationModal()">&times;</span>
+            <div class="modal-title">號碼推薦結果</div>
+            <div class="recommendation-results" id="recommendation-results"></div>
         </div>
     </div>
 
@@ -1871,6 +2169,97 @@
             'super-lotto': {{ ranges.super_lotto.total }},
             'daily-cash': {{ ranges.daily_cash.total }}
         };
+
+        function getQuickPicks() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=quick&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getHotCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const periods = document.getElementById('analysis-periods').value || 50;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=hot&periods=${periods}&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getColdCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const periods = document.getElementById('analysis-periods').value || 50;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=cold&periods=${periods}&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getBalancedCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const periods = document.getElementById('analysis-periods').value || 50;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=balanced&periods=${periods}&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getLuckyNumbers() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const birthDate = document.getElementById('birth-date').value;
+            const luckyNumbers = document.getElementById('lucky-numbers').value;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=lucky&count=${count}&birth_date=${birthDate}&lucky_numbers=${luckyNumbers}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function showRecommendations(data) {
+            const modal = document.getElementById('recommendation-modal');
+            const resultsContainer = document.getElementById('recommendation-results');
+            
+            // 定義鍵值的中文對照表
+            const keyTranslations = {
+                'birth_numbers_used': '使用生日數字',
+                'lucky_numbers_used': '使用幸運數字',
+                'random_numbers_used': '使用隨機數字'
+            };
+            
+            resultsContainer.innerHTML = data.recommendations.map(rec => `
+                <div class="recommendation-item">
+                    <div class="recommendation-numbers">
+                        ${rec.numbers.map(n => `<div class="number">${n}</div>`).join('')}
+                        ${rec.special_number ? `<div class="number special-number">${rec.special_number}</div>` : ''}
+                    </div>
+                    <div class="recommendation-reason">${rec.reason}</div>
+                    <div class="recommendation-confidence">信心指數: ${rec.confidence}%</div>
+                    ${rec.details ? `
+                        <div class="recommendation-details">
+                            ${Object.entries(rec.details).map(([key, value]) => `
+                                <div>${keyTranslations[key] || key}: ${Array.isArray(value) ? value.join(', ') : value}</div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+            
+            modal.style.display = 'block';
+        }
+
+        function closeRecommendationModal() {
+            document.getElementById('recommendation-modal').style.display = 'none';
+        }
     </script>
 </body>
 </html> 
