@@ -860,6 +860,119 @@
                 align-items: flex-start;
             }
         }
+
+        .prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .prediction-time {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .prediction-numbers {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+
+        .model-score {
+            text-align: center;
+            color: #4CAF50;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            color: #888;
+            min-width: 80px;
+        }
+
+        /* 添加新樣式 */
+        .analysis-section {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-section + .analysis-section {
+            margin-top: 30px;
+        }
+        
+        .analysis-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .analysis-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 2px;
+        }
+        
+        /* 禁用狀態的按鈕樣式 */
+        .analysis-button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .training-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .training-controls .analysis-input {
+            width: 120px;  /* 固定輸入框寬度 */
+        }
+        
+        .analysis-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        /* 響應式調整 */
+        @media screen and (max-width: 480px) {
+            .analysis-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .training-controls {
+                width: 100%;
+            }
+            
+            .training-controls .analysis-input {
+                flex: 1;  /* 在手機版讓輸入框自適應寬度 */
+            }
+        }
+
+        /* 修改預測按鈕樣式 */
+        .predict-button {
+            width: 100px;       /* 設置與「開始訓練」相同的寬度 */
+            padding: 12px 15px; /* 與其他按鈕相同的內邊距 */
+            font-size: 16px;    /* 與其他按鈕相同的字體大小 */
+            text-align: center; /* 文字置中 */
+        }
     </style>
 
     <!-- 添加 Font Awesome 圖標庫 -->
@@ -1251,7 +1364,65 @@
         </div>
     </div>
 
+    <!-- 在分析面板後面添加預測面板 -->
+    <div class="section-container">
+        <div class="section-title">機器學習預測</div>
+        <div class="section-description">使用機器學習模型分析歷史數據進行預測</div>
+        
+        <!-- 修改分析控制區塊 -->
+        <div class="analysis-controls">
+            <!-- 步驟 1: 訓練模型 -->
+            <div class="analysis-section">
+                <div class="analysis-header">
+                    <div class="analysis-title">步驟 1: 模型訓練</div>
+                    <div class="training-controls">
+                        <input type="number" 
+                               id="training-periods" 
+                               class="analysis-input" 
+                               value="1000" 
+                               min="100" 
+                               max="5000"
+                               onchange="validateTrainingPeriods(this)"
+                               placeholder="訓練期數">
+                        <button class="analysis-button" onclick="trainModel()">開始訓練</button>
+                    </div>
+                </div>
+                <div class="model-score">尚未訓練模型</div>
+                <div class="section-description">
+                    建議的訓練期數說明：
+                    <ul>
+                        <li>最少需要 100 期數據才能進行訓練</li>
+                        <li>建議使用 500-1000 期以獲得較好的預測效果</li>
+                        <li>數據量過少可能影響預測準確度</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步驟 2: 獲取預測 -->
+            <div class="analysis-section">
+                <div class="analysis-header">
+                    <div class="analysis-title">步驟 2: 獲取預測</div>
+                    <button class="analysis-button predict-button" onclick="getPrediction()" id="predict-button" disabled>預測</button>
+                </div>
+                <div class="section-description">
+                    請先完成模型訓練後再進行預測
+                </div>
+                <div id="prediction-results" style="display: none;">
+                    <div class="prediction-numbers"></div>
+                    <div class="prediction-time"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // 添加全局變量來追踪每個彩種的訓練狀態
+        const trainedLotteries = {
+            'big-lotto': false,
+            'super-lotto': false,
+            'daily-cash': false
+        };
+
         function showLottery(lotteryId) {
             // 隱藏所有區塊
             document.querySelectorAll('.lottery-section').forEach(section => {
@@ -1288,6 +1459,52 @@
             
             // 觸發分析更新
             showFrequencyAnalysis();
+            
+            // 重置預測相關狀態
+            resetPredictionState();
+            
+            // 切換彩種時更新預測按鈕狀態
+            updatePredictButton(lotteryId);
+        }
+        
+        // 添加重置預測狀態的函數
+        function resetPredictionState() {
+            // 重置訓練狀態
+            Object.keys(trainedLotteries).forEach(key => {
+                trainedLotteries[key] = false;
+            });
+            
+            // 重置模型訓練結果顯示
+            const scoreElement = document.querySelector('.model-score');
+            scoreElement.innerHTML = '尚未訓練模型';
+            
+            // 重置預測結果
+            const resultsDiv = document.getElementById('prediction-results');
+            resultsDiv.style.display = 'none';
+            resultsDiv.innerHTML = '';
+            
+            // 重置預測按鈕和提示文字
+            const predictButton = document.getElementById('predict-button');
+            predictButton.disabled = true;
+            
+            const description = document.querySelector('#prediction-results').previousElementSibling;
+            description.textContent = '請先完成當前彩種的模型訓練後再進行預測';
+            
+            // 重置訓練期數為預設值
+            document.getElementById('training-periods').value = '1000';
+        }
+        
+        // 添加更新預測按鈕狀態的函數
+        function updatePredictButton(lotteryId) {
+            const predictButton = document.getElementById('predict-button');
+            const isTrained = trainedLotteries[lotteryId];
+            predictButton.disabled = !isTrained;
+            
+            // 更新提示文字
+            const description = document.querySelector('#prediction-results').previousElementSibling;
+            description.textContent = isTrained ? 
+                '模型已訓練完成，可以開始預測' : 
+                '請先完成當前彩種的模型訓練後再進行預測';
         }
         
         // 將原本的 showAnalysis 函數重新命名為 showFrequencyAnalysis
@@ -2603,6 +2820,116 @@
             fetch(`/api/recommend/${lotteryId}?type=festival&count=${count}`)
                 .then(response => response.json())
                 .then(data => showRecommendations(data));
+        }
+
+        function trainModel() {
+            const periods = document.getElementById('training-periods').value;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            // 添加期數驗證
+            if (periods < 100) {
+                alert(`訓練期數過少!\n\n為了確保預測模型的準確性，建議的訓練期數說明：\n- 最少需要 100 期數據才能進行訓練\n- 建議使用 500-1000 期以獲得較好的預測效果\n- 數據量過少可能導致:\n  * 模型無法學習到完整的號碼分布規律\n  * 預測結果的可靠性降低\n  * 容易出現過擬合問題`);
+                return;
+            }
+            
+            // 顯示訓練中狀態
+            const scoreElement = document.querySelector('.model-score');
+            scoreElement.innerHTML = '模型訓練中...請稍候';
+            
+            fetch(`/api/train/${lotteryId}?periods=${periods}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.message || data.error);
+                        return;
+                    }
+                    
+                    scoreElement.innerHTML = `模型訓練完成：
+                        <br>使用期數：${data.periods}期
+                        <br>模型準確度：${(data.rf_score * 100).toFixed(2)}%
+                        <br>${data.message || ''}`;
+                    
+                    // 更新訓練狀態
+                    trainedLotteries[lotteryId] = true;
+                    updatePredictButton(lotteryId);
+                })
+                .catch(error => {
+                    alert('訓練模型時發生錯誤：' + error);
+                    scoreElement.innerHTML = '模型訓練失敗';
+                    trainedLotteries[lotteryId] = false;
+                    updatePredictButton(lotteryId);
+                });
+        }
+
+        // 添加輸入驗證
+        function validateTrainingPeriods(input) {
+            const min = 100;
+            const max = 5000;
+            
+            if (input.value < min) {
+                alert(`訓練期數不能少於 ${min} 期`);
+                input.value = min;
+            } else if (input.value > max) {
+                alert(`訓練期數不能超過 ${max} 期`);
+                input.value = max;
+            }
+        }
+
+        function getPrediction() {
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            // 添加防呆檢查
+            if (!trainedLotteries[lotteryId]) {
+                alert('請先訓練當前彩種的模型後再進行預測');
+                return;
+            }
+            
+            // 顯示預測中狀態
+            const resultsDiv = document.getElementById('prediction-results');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div>預測中...請稍候</div>';
+            
+            fetch(`/api/predict/${lotteryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        resultsDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                        return;
+                    }
+                    
+                    // 根據彩種類型顯示不同格式
+                    let numbersHtml = '';
+                    if (lotteryId === 'super-lotto') {
+                        // 威力彩: 6個主要號碼 + 1個特別號
+                        numbersHtml = `
+                            <div class="prediction-numbers">
+                                ${data.predicted_numbers.slice(0, 6).map(num => 
+                                    `<div class="number">${num}</div>`
+                                ).join('')}
+                                <div class="number special-number">${data.predicted_numbers[6]}</div>
+                            </div>
+                        `;
+                    } else {
+                        // 其他彩種: 顯示所有號碼
+                        numbersHtml = `
+                            <div class="prediction-numbers">
+                                ${data.predicted_numbers.map(num => 
+                                    `<div class="number">${num}</div>`
+                                ).join('')}
+                            </div>
+                        `;
+                    }
+                    
+                    resultsDiv.innerHTML = `
+                        ${numbersHtml}
+                        <div class="prediction-time">預測時間: ${data.prediction_time}</div>
+                    `;
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = `<div class="error-message">預測失敗：${error}</div>`;
+                });
         }
     </script>
 </body>

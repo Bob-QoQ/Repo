@@ -21,8 +21,15 @@ from lottery_recommendation import (
     get_common_combinations,
     get_festival_combinations
 )
+from prediction_models import LotteryPredictor
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+predictor = LotteryPredictor()
 
 def get_data_range():
     conn = sqlite3.connect('lottery.db')
@@ -508,6 +515,88 @@ def get_recommendations(lottery_type):
     except Exception as e:
         print(f"Error in get_recommendations: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/train/<lottery_type>')
+def train_prediction_model(lottery_type):
+    try:
+        # 驗證彩券類型
+        if lottery_type not in ['big-lotto', 'super-lotto', 'daily-cash']:
+            return jsonify({'error': '不支援的彩券類型'}), 400
+            
+        periods = request.args.get('periods', default=1000, type=int)
+        
+        # 添加期數驗證和說明
+        if periods < 100:
+            return jsonify({
+                'error': '訓練期數過少',
+                'message': '''
+                為了確保預測模型的準確性，建議的訓練期數說明：
+                - 最少需要 100 期數據才能進行訓練
+                - 建議使用 500-1000 期以獲得較好的預測效果
+                - 數據量過少可能導致:
+                  * 模型無法學習到完整的號碼分布規律
+                  * 預測結果的可靠性降低
+                  * 容易出現過擬合問題
+                '''
+            }), 400
+            
+        # 檢查資料庫中實際的期數
+        conn = sqlite3.connect('lottery.db')
+        cursor = conn.cursor()
+        table_name = {
+            'big-lotto': 'big_lotto',
+            'super-lotto': 'super_lotto',
+            'daily-cash': 'daily_cash'
+        }[lottery_type]
+        
+        cursor.execute(f'SELECT COUNT(*) FROM {table_name}')
+        available_periods = cursor.fetchone()[0]
+        conn.close()
+        
+        # 如果請求的期數超過可用期數，使用可用期數
+        periods = min(periods, available_periods)
+        
+        logger.info(f'開始訓練模型: {lottery_type}, 期數: {periods}')
+        results = predictor.train_models(lottery_type, periods)
+        logger.info(f'模型訓練完成: {results}')
+        
+        return jsonify({
+            'lottery_type': lottery_type,
+            'periods': periods,
+            'rf_score': results['rf_score'],
+            'message': f'模型訓練完成，使用 {periods} 期數據'
+        })
+        
+    except Exception as e:
+        logger.error(f'訓練模型時發生錯誤: {str(e)}', exc_info=True)
+        return jsonify({'error': f'訓練模型時發生錯誤: {str(e)}'}), 500
+
+@app.route('/api/predict/<lottery_type>')
+def predict_next_draw(lottery_type):
+    try:
+        # 驗證彩券類型
+        if lottery_type not in ['big-lotto', 'super-lotto', 'daily-cash']:
+            return jsonify({'error': '不支援的彩券類型'}), 400
+            
+        # 檢查模型是否已訓練
+        if predictor.rf_model is None:
+            return jsonify({'error': '請先訓練模型'}), 400
+            
+        logger.info(f'開始預測: {lottery_type}')
+        numbers = predictor.predict_next_draw(lottery_type)
+        prediction_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        logger.info(f'預測完成: {numbers}')
+        
+        return jsonify({
+            'lottery_type': lottery_type,
+            'predicted_numbers': numbers,
+            'prediction_time': prediction_time
+        })
+        
+    except Exception as e:
+        logger.error(f'預測時發生錯誤: {str(e)}', exc_info=True)
+        return jsonify({'error': f'預測時發生錯誤: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 
