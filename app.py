@@ -7,7 +7,19 @@ from lottery_recommendation import (
     get_hot_combinations,
     get_cold_combinations,
     get_balanced_combinations,
-    get_lucky_numbers
+    get_lucky_numbers,
+    get_missing_value_combinations,
+    get_periodic_combinations,
+    get_consecutive_combinations,
+    get_same_tail_combinations,
+    get_symmetric_combinations,
+    get_high_frequency_combinations,
+    get_golden_ratio_combinations,
+    get_fibonacci_combinations,
+    get_arithmetic_combinations,
+    get_zodiac_combinations,
+    get_common_combinations,
+    get_festival_combinations
 )
 
 app = Flask(__name__)
@@ -159,6 +171,9 @@ def analyze(lottery_type):
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
         
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
+        
         results = analyze_lottery(lottery_type, periods)
         return jsonify(results)
     except Exception as e:
@@ -184,6 +199,9 @@ def analyze_repeat(lottery_type):
         
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
+        
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
         
         results = analyze_repeat_numbers(lottery_type, periods)
         return jsonify(results)
@@ -211,6 +229,9 @@ def analyze_special(lottery_type):
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
         
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
+        
         results = analyze_special_numbers(lottery_type, periods)
         return jsonify(results)
     except Exception as e:
@@ -236,6 +257,9 @@ def analyze_combination(lottery_type):
         
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
+        
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
         
         results = analyze_combination_numbers(lottery_type, periods)
         return jsonify(results)
@@ -263,6 +287,9 @@ def analyze_prediction(lottery_type):
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
         
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
+        
         results = analyze_prediction_numbers(lottery_type, periods)
         return jsonify(results)
     except Exception as e:
@@ -288,6 +315,9 @@ def analyze_route(lottery_type):
         
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
+        
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
         
         results = analyze_route_numbers(lottery_type, periods)
         return jsonify(results)
@@ -315,6 +345,9 @@ def analyze_repetition(lottery_type):
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
         
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
+        
         results = analyze_repetition_numbers(lottery_type, periods)
         return jsonify(results)
     except Exception as e:
@@ -340,6 +373,9 @@ def analyze_consecutive(lottery_type):
         
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
+        
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
         
         results = analyze_consecutive_numbers(lottery_type, periods)
         return jsonify(results)
@@ -367,6 +403,9 @@ def analyze_numeric(lottery_type):
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
         
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
+        
         results = analyze_numeric_numbers(lottery_type, periods)
         return jsonify(results)
     except Exception as e:
@@ -393,6 +432,9 @@ def analyze_distribution(lottery_type):
         # 如果請求的期數超過實際期數，則使用實際最大期數
         periods = min(periods, max_periods)
         
+        if periods < 10:  # 設置最小回測期數為10期
+            raise ValueError('週期性分析需要至少10期的數據才能得到有意義的結果')
+        
         results = analyze_distribution_numbers(lottery_type, periods)
         return jsonify(results)
     except Exception as e:
@@ -402,10 +444,20 @@ def analyze_distribution(lottery_type):
 @app.route('/api/recommend/<lottery_type>')
 def get_recommendations(lottery_type):
     try:
-        # 獲取推薦參數
-        recommendation_type = request.args.get('type', 'quick')  # quick, hot, cold, balanced, lucky
+        recommendation_type = request.args.get('type', 'quick')
         periods = request.args.get('periods', default=50, type=int)
-        numbers_count = request.args.get('count', default=5, type=int)  # 要推薦幾組號碼
+        numbers_count = request.args.get('count', default=5, type=int)
+        
+        # 添加回測期數和推薦組數的檢查
+        if recommendation_type in ['hot', 'cold', 'balanced', 'missing', 'periodic', 'consecutive']:
+            if periods < 10:
+                return jsonify({'error': '回測期數必須至少為10期'}), 400
+        
+        # 限制推薦組數
+        if numbers_count < 1:
+            numbers_count = 1
+        elif numbers_count > 20:  # 設置最大推薦組數為20
+            numbers_count = 20
         
         # 根據不同的推薦類型調用對應的函數
         if recommendation_type == 'quick':
@@ -420,6 +472,30 @@ def get_recommendations(lottery_type):
             birth_date = request.args.get('birth_date', '')
             lucky_numbers = request.args.get('lucky_numbers', '').split(',')
             results = get_lucky_numbers(lottery_type, birth_date, lucky_numbers, numbers_count)
+        elif recommendation_type == 'missing':
+            results = get_missing_value_combinations(lottery_type, periods, numbers_count)
+        elif recommendation_type == 'periodic':
+            results = get_periodic_combinations(lottery_type, periods, numbers_count)
+        elif recommendation_type == 'consecutive':
+            results = get_consecutive_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'same_tail':
+            results = get_same_tail_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'symmetric':
+            results = get_symmetric_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'high_frequency':
+            results = get_high_frequency_combinations(lottery_type, periods, numbers_count)
+        elif recommendation_type == 'golden':
+            results = get_golden_ratio_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'fibonacci':
+            results = get_fibonacci_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'arithmetic':
+            results = get_arithmetic_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'zodiac':
+            results = get_zodiac_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'common':
+            results = get_common_combinations(lottery_type, numbers_count)
+        elif recommendation_type == 'festival':
+            results = get_festival_combinations(lottery_type, numbers_count)
         else:
             return jsonify({'error': '不支援的推薦類型'}), 400
             

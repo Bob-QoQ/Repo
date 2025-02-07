@@ -653,11 +653,6 @@
             margin-top: 10px;
         }
 
-        .recommendation-confidence {
-            color: #4CAF50;
-            font-weight: bold;
-        }
-
         .recommendation-details {
             margin-top: 10px;
             padding-top: 10px;
@@ -759,7 +754,7 @@
 
         .recommendation-row {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
         }
 
@@ -780,7 +775,6 @@
             /* 調整推薦按鈕排列 */
             .recommendation-row {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
             }
 
             /* 調整幸運號碼區塊 */
@@ -846,6 +840,24 @@
                 width: 35px;
                 height: 35px;
                 font-size: 16px;
+            }
+        }
+
+        .period-inputs {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        @media screen and (max-width: 768px) {
+            .period-inputs {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .analysis-header {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -918,10 +930,28 @@
     <div class="analysis-controls">
         <div class="analysis-header">
             <div class="analysis-title">號碼推薦系統</div>
-            <div class="period-input">
-                <label for="recommendation-count">推薦組數</label>
-                <input type="number" id="recommendation-count" class="analysis-input" 
-                       placeholder="預設5組" min="1" max="10" value="5">
+            <div class="period-inputs">
+                <div class="period-input">
+                    <label for="recommendation-periods">回測期數</label>
+                    <input type="number" 
+                           id="recommendation-periods" 
+                           class="analysis-input" 
+                           placeholder="預設50期" 
+                           min="10" 
+                           max="{{ ranges.big_lotto.total }}" 
+                           value="50">
+                </div>
+                <div class="period-input">
+                    <label for="recommendation-count">推薦組數</label>
+                    <input type="number" 
+                           id="recommendation-count" 
+                           class="analysis-input" 
+                           placeholder="預設5組" 
+                           min="1" 
+                           max="20"
+                           value="5"
+                           oninput="validateRecommendationCount(this)">
+                </div>
             </div>
         </div>
         <div class="analysis-content">
@@ -943,6 +973,54 @@
                     <button onclick="getBalancedCombinations()" class="analysis-button">
                         <i class="fas fa-balance-scale"></i>
                         平衡組合
+                    </button>
+                    <button onclick="getMissingValueCombinations()" class="analysis-button">
+                        <i class="fas fa-history"></i>
+                        遺漏值分析
+                    </button>
+                    <button onclick="getPeriodicCombinations()" class="analysis-button">
+                        <i class="fas fa-clock"></i>
+                        週期性分析
+                    </button>
+                    <button onclick="getConsecutiveCombinations()" class="analysis-button">
+                        <i class="fas fa-sort-numeric-up"></i>
+                        連號組合
+                    </button>
+                    <button onclick="getSameTailCombinations()" class="analysis-button">
+                        <i class="fas fa-hashtag"></i>
+                        同尾數組合
+                    </button>
+                    <button onclick="getSymmetricCombinations()" class="analysis-button">
+                        <i class="fas fa-balance-scale-right"></i>
+                        對稱號碼組合
+                    </button>
+                    <button onclick="getHighFrequencyCombinations()" class="analysis-button">
+                        <i class="fas fa-bolt"></i>
+                        高頻號碼組合
+                    </button>
+                    <button onclick="getGoldenRatioCombinations()" class="analysis-button">
+                        <i class="fas fa-ruler"></i>
+                        黃金分割推薦
+                    </button>
+                    <button onclick="getFibonacciCombinations()" class="analysis-button">
+                        <i class="fas fa-calculator"></i>
+                        費波那契推薦
+                    </button>
+                    <button onclick="getArithmeticCombinations()" class="analysis-button">
+                        <i class="fas fa-equals"></i>
+                        等差數列推薦
+                    </button>
+                    <button onclick="getZodiacCombinations()" class="analysis-button">
+                        <i class="fas fa-dragon"></i>
+                        生肖號碼組合
+                    </button>
+                    <button onclick="getCommonCombinations()" class="analysis-button">
+                        <i class="fas fa-users"></i>
+                        常見組合推薦
+                    </button>
+                    <button onclick="getFestivalCombinations()" class="analysis-button">
+                        <i class="fas fa-calendar-alt"></i>
+                        節日主題組合
                     </button>
                 </div>
             </div>
@@ -2260,8 +2338,12 @@
         }
 
         function getHotCombinations() {
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            if (periods < 10) {
+                alert('回測期數必須至少為10期');
+                return;
+            }
             const count = document.getElementById('recommendation-count').value || 5;
-            const periods = document.getElementById('analysis-periods').value || 50;
             const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
                 .match(/'([^']+)'/)[1];
             
@@ -2271,8 +2353,12 @@
         }
 
         function getColdCombinations() {
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            if (periods < 10) {
+                alert('回測期數必須至少為10期');
+                return;
+            }
             const count = document.getElementById('recommendation-count').value || 5;
-            const periods = document.getElementById('analysis-periods').value || 50;
             const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
                 .match(/'([^']+)'/)[1];
             
@@ -2282,8 +2368,12 @@
         }
 
         function getBalancedCombinations() {
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            if (periods < 10) {
+                alert('回測期數必須至少為10期');
+                return;
+            }
             const count = document.getElementById('recommendation-count').value || 5;
-            const periods = document.getElementById('analysis-periods').value || 50;
             const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
                 .match(/'([^']+)'/)[1];
             
@@ -2307,6 +2397,15 @@
         function showRecommendations(data) {
             const modal = document.getElementById('recommendation-modal');
             const resultsContainer = document.getElementById('recommendation-results');
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            // 修改標題區域，添加回測期數資訊
+            document.querySelector('#recommendation-modal .modal-title').innerHTML = 
+                data.recommendation_type === 'quick' || data.recommendation_type === 'lucky' 
+                    ? '號碼推薦結果'
+                    : `號碼推薦結果 (回測${periods}期)`;
             
             // 定義鍵值的中文對照表
             const keyTranslations = {
@@ -2315,29 +2414,195 @@
                 'random_numbers_used': '使用隨機數字'
             };
             
-            resultsContainer.innerHTML = data.recommendations.map(rec => `
-                <div class="recommendation-item">
-                    <div class="recommendation-numbers">
+            resultsContainer.innerHTML = data.recommendations.map(rec => {
+                // 根據彩種不同處理號碼顯示
+                let numbersHtml = '';
+                if (lotteryId === 'big-lotto') {
+                    // 大樂透：所有號碼都顯示為綠色
+                    numbersHtml = rec.numbers.map(n => 
+                        `<div class="number">${n}</div>`
+                    ).join('');
+                } else if (lotteryId === 'super-lotto') {
+                    // 威力彩：6個主要號碼(綠色) + 1個特別號(紅色)
+                    numbersHtml = `
                         ${rec.numbers.map(n => `<div class="number">${n}</div>`).join('')}
                         ${rec.special_number ? `<div class="number special-number">${rec.special_number}</div>` : ''}
-                    </div>
-                    <div class="recommendation-reason">${rec.reason}</div>
-                    <div class="recommendation-confidence">信心指數: ${rec.confidence}%</div>
-                    ${rec.details ? `
-                        <div class="recommendation-details">
-                            ${Object.entries(rec.details).map(([key, value]) => `
-                                <div>${keyTranslations[key] || key}: ${Array.isArray(value) ? value.join(', ') : value}</div>
-                            `).join('')}
+                    `;
+                } else {
+                    // 今彩539：5個號碼，沒有特別號
+                    numbersHtml = rec.numbers.map(n => 
+                        `<div class="number">${n}</div>`
+                    ).join('');
+                }
+                
+                return `
+                    <div class="recommendation-item">
+                        <div class="recommendation-numbers">
+                            ${numbersHtml}
                         </div>
-                    ` : ''}
-                </div>
-            `).join('');
+                        <div class="recommendation-reason">${rec.reason}</div>
+                        ${rec.details ? `
+                            <div class="recommendation-details">
+                                ${Object.entries(rec.details).map(([key, value]) => `
+                                    <div>${keyTranslations[key] || key}: ${Array.isArray(value) ? value.join(', ') : value}</div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
             
             modal.style.display = 'block';
         }
 
         function closeRecommendationModal() {
             document.getElementById('recommendation-modal').style.display = 'none';
+        }
+
+        function getMissingValueCombinations() {
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            if (periods < 10) {
+                alert('回測期數必須至少為10期');
+                return;
+            }
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=missing&periods=${periods}&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getPeriodicCombinations() {
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            if (periods < 10) {
+                alert('回測期數必須至少為10期');
+                return;
+            }
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=periodic&periods=${periods}&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        // 添加一個新的檢查函數
+        function validateRecommendationCount(input) {
+            if (input.value > 20) {
+                alert('推薦組數不能超過20組');
+                input.value = 20;  // 自動設為最大值
+            } else if (input.value < 1) {
+                alert('推薦組數不能少於1組');
+                input.value = 1;   // 自動設為最小值
+            }
+        }
+
+        function getConsecutiveCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=consecutive&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getSameTailCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=same_tail&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getSymmetricCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=symmetric&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getHighFrequencyCombinations() {
+            const periods = document.getElementById('recommendation-periods').value || 50;
+            if (periods < 10) {
+                alert('回測期數必須至少為10期');
+                return;
+            }
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=high_frequency&periods=${periods}&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getGoldenRatioCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=golden&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getFibonacciCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=fibonacci&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getArithmeticCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=arithmetic&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getZodiacCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=zodiac&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getCommonCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=common&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
+        }
+
+        function getFestivalCombinations() {
+            const count = document.getElementById('recommendation-count').value || 5;
+            const lotteryId = document.querySelector('.tab-button.active').onclick.toString()
+                .match(/'([^']+)'/)[1];
+            
+            fetch(`/api/recommend/${lotteryId}?type=festival&count=${count}`)
+                .then(response => response.json())
+                .then(data => showRecommendations(data));
         }
     </script>
 </body>
